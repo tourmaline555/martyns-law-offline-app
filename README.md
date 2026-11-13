@@ -1,8 +1,36 @@
 # Martyn's Law Readiness Check (offline app)
 
-A small, browser-based, offline-first UK premises/event readiness self-assessment. Designed to be easy to use on Android (including Termux), desktop and tablets. No account, backend, database, cloud API, npm install or internet is needed to run it locally.
+A small, browser-based, offline-first UK premises/event readiness self-assessment. Designed to be easy to use on Android (including Termux), desktop and tablets. No account, backend, server-side database, cloud API, npm install or internet is needed to run it locally. Saved audit and action records use the browser’s local IndexedDB.
 
-**Version:** 1.0, 13 November 2026.
+**Version:** 3.0, 13 November 2026.
+
+## Version 3.0 — action tracker and follow-up (Termux update)
+
+**What is new:** Each recommendation from a saved assessment becomes a trackable improvement action tied to **site + question ID**. Assign a responsible person, due date, status (**Open / In progress / On hold / Completed**) and a brief progress note. See outstanding, overdue and completed totals across all sites or filter one site. Every change creates a local timestamped log entry. Export a spreadsheet-ready **CSV action register**, or include the current action status, owner and due date in the PDF report.
+
+A reassessment **carries outstanding work forward**, preserves the owner and due date and marks a gap as no longer present when the new questionnaire supports that. **It does not silently close actions.** If a completed gap is flagged again in a *newer* assessment, the task is reopened and the event is logged. Existing v2 saved snapshots are automatically used to seed the tracker when you open it. Historical snapshots remain unchanged. Progress entries are **not legally certified, tamper-evident or cloud-synced**.
+
+**Before updating:** In the installed v2 app, open **Audit trail & trends → Export all records + draft**. Keep that archive somewhere secure. This v3 update keeps the same draft key and IndexedDB audit history (provided you open the same URL/browser). Do not clear Chrome data before backing up.
+
+**Install onto your existing Termux project:** Download the **full** `Martyns-Law-v3-Full-Termux-Update.zip` (safest for v1 or v2 installs), or the smaller `Martyns-Law-v3-Action-Tracker-Update.zip` if already on v2, to Android Downloads. For the full ZIP, run:
+
+```sh
+cd ~/martyns-law-offline-app || exit
+unzip -o ~/storage/downloads/Martyns-Law-v3-Full-Termux-Update.zip -d .
+# Optional code checks, if nodejs is installed:
+node test.js && node test-actions.js
+git add index.html styles.css *.js manifest.webmanifest assets README.md question-data.json start-termux.sh
+git commit -m "Add offline action tracker, due dates and change log"
+git push origin main
+```
+
+Your GitHub Pages URL remains `https://tourmaline555.github.io/martyns-law-offline-app/`. Refresh it while online after deployment. Confirm that the footer says **v3.0**. The offline cache uses a new name and includes `actions.js`; after the new files have been cached the app runs offline again. No change to hosting or extra server is required.
+
+**Use:** Save a dated assessment in Results, then tap **Action tracker**. Select your site, allocate actions and press **Save progress**. Look at **Activity history** for changes. Export the entire **v3 records + actions archive** regularly: it now contains assessments, actions, action events and draft answers in a single unencrypted JSON file. The Import function accepts both v2 (assessments-only) and v3 (full) archives; on a v2 import, it generates the action list from the saved assessment findings. Use **Export action register CSV** if someone needs to work with action data in a spreadsheet. Share the PDF using the existing **Share PDF** button in Results or historical records.
+
+**Limitations:** Records and tracker data live on *one device + browser origin*. The public GitHub code repository does not contain assessment answers, notes or action records. This is not multi-user syncing or a legally defensible immutable audit register. The score is an indicative readiness model, not statutory certification. An assessor should review recommendations, status changes and the generated procedures for site-specific correctness. Never commit JSON backups, site-specific reports or sensitive plans to a public Git repository.
+
+---
 
 ## What it does
 

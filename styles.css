@@ -13,3 +13,20 @@
 .record-end strong{font-size:21px}
 .record-card .button{padding:8px 10px;font-size:12px;min-height:38px}
 @media(max-width:680px){.record-card{align-items:flex-start;flex-direction:column}.record-end{justify-content:flex-start}}
+
+/* v3 action tracker: mobile-friendly action forms and change history */
+.tracked-action{border:1px solid #dce7ec;border-radius:13px;padding:18px;margin:14px 0 20px;background:#fdfefe}
+.tracked-action h3{font-size:16px;line-height:1.38;color:#1b3c55;margin:4px 0 7px}
+.tracked-action .eyebrow{margin:0;font-size:10px}
+.tracked-action .action-head{margin-bottom:11px}
+.tracked-action .row-2{margin-top:17px;column-gap:13px;row-gap:4px}
+.tracked-action .field{margin-bottom:9px}
+.tracked-action textarea{min-height:74px}
+.tracked-action .priority{flex:0 0 auto;font-size:11px;font-weight:850;color:#7e4b1a;background:#fff2dc;padding:5px 8px;border-radius:6px}
+.tracked-action .priority.immediate{color:#9a3d32;background:#fde5e3}
+.action-log{border-top:1px solid #e4edf1;margin-top:15px;padding-top:10px;color:#5a6a7c;font-size:12px}
+.action-log summary{cursor:pointer;font-weight:750;color:#235b72;padding:8px 0}
+.action-log ol{padding-left:20px;margin-top:7px}
+.action-log li{margin:7px 0;overflow-wrap:anywhere}
+.overdue-text{color:#a02d28;font-weight:850}
+@media(max-width:680px){.tracked-action{padding:15px 13px}}

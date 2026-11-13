@@ -51,7 +51,7 @@ class Pdf {
  }
 }
 const mapAnswer={yes:'Yes',partly:'Partly',no:'No',not_sure:'Not sure',na:'Not applicable'};
-function generate(state,result){
+function generate(state,result,tracker=[]){
  const p=new Pdf(),b=state.business,r=result;
  p.title('Preparedness assessment report');
  p.kv('Organisation:',b.name||'Not specified');p.kv('Site / location:',b.site||'Not specified');p.kv('Assessed by:',b.assessor||'Not specified');p.kv('Assessment date:',b.date||new Date().toISOString().slice(0,10));
@@ -104,6 +104,25 @@ function generate(state,result){
    p.lineText(`Recommended action: ${a.action}`,{size:9.3,bold:true,after:2});
    const note=state.notes?.[a.q.id];if(note)p.lineText(`Assessor note: ${note}`,{size:8.6,after:2});
    p.gap(7);
+ }
+ // The action register is current at export; it is not frozen with an older audit snapshot.
+ if(Array.isArray(tracker) && tracker.length){
+   p.title('Action tracker - progress at export');
+   p.lineText('This section reflects current saved action statuses on this device at the moment the PDF was generated. It is NOT part of an earlier assessment snapshot. Changes are logged separately in the local action history.',{size:9.1,color:MUTED,after:10});
+   const complete=tracker.filter(a=>a.status==='Completed').length;
+   const active=tracker.length-complete;
+   const overdue=tracker.filter(a=>a.status!=='Completed'&&a.dueDate&&a.dueDate<[new Date().getFullYear(),String(new Date().getMonth()+1).padStart(2,'0'),String(new Date().getDate()).padStart(2,'0')].join('-')).length;
+   p.kv('Action register:',`${tracker.length} total, ${active} outstanding, ${complete} completed`);
+   p.kv('Overdue:',`${overdue} outstanding actions`);
+   p.gap(10);
+   for(const a of tracker){
+     p.ensure(89);
+     p.lineText(`${a.questionId}  |  ${a.priority}  |  ${a.status}${a.flagged?'  |  Gap still flagged':'  |  Gap not flagged in latest review'}`,{bold:true,size:9.4,color:a.status==='Completed'?RAG.Green:a.dueDate&&a.dueDate<new Date().toISOString().slice(0,10)?RAG.Red:TEAL,after:3});
+     p.lineText(a.recommendation,{size:9.2,after:3});
+     p.lineText(`Owner: ${a.owner||'Not assigned'}   Target date: ${a.dueDate||'Not set'}`,{size:8.9,after:2});
+     if(a.note)p.lineText('Progress update: '+a.note,{size:8.7,after:3});
+     p.gap(6);
+   }
  }
  p.title('Full question-by-question record');
  p.lineText('Q1-Q4 form the separate scope screen. The record below contains each readiness question shown in this assessment. Items skipped by conditional branching are not scored.',{size:9.2,after:9});
