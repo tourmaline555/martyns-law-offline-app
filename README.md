@@ -1,3 +1,33 @@
+# Martyn's Law Readiness Check — v3.1 workflow update
+
+## Important: back up before upgrading
+
+In the existing app, use **Audit trail & trends → Export records, actions & draft** and store that JSON in a secure location. Records remain in the **same browser on the same site address** after updating, but clearing browser storage can erase them. This update does **not** delete or migrate the IndexedDB records.
+
+## What changed in v3.1
+
+- Results now has one clear final action: **Save assessment & finish**. The archive is committed to IndexedDB before the active draft is cleared.
+- A confirmation page displays the saved score and offers **Reassess this site** (same premises, all answers reset) or **Assess another site** (blank premises, all answers reset). Other options: view saved record, share saved PDF, or open the audit archive.
+- Results shows **Share report** and a collapsed **More options** section for editing and backups. Duplicate toolbars were removed.
+- Archived records have their own share, report, action and *optional* procedure template tools. The PDF report already contains the findings and recommended actions; a separate draft procedure template is not a required step in this workflow. It must be reviewed and adapted before operational use.
+- Historical assessment snapshots remain read-only. Saving a record resets only the **current draft**, not the archive, action register or its change history.
+- v3.1 service-worker cache name forces the updated page to replace the previous version after online refresh, while retaining offline operation.
+
+## Termux update
+
+```sh
+cd ~/martyns-law-offline-app || exit
+unzip -o ~/storage/downloads/Martyns-Law-v3.1-Workflow-Update.zip -d .
+node test.js    # optional, if Node is installed in Termux
+git add .
+git commit -m 'Simplify save and archive workflow v3.1'
+git push origin main
+```
+
+If the browser still displays the old controls, connect once, reload the GitHub Pages URL and verify the footer reads **v3.1**. Local Termux hosting (127.0.0.1) has a **different** record store from the public HTTPS domain.
+
+---
+
 # Martyn's Law Readiness Check (offline app)
 
 A small, browser-based, offline-first UK premises/event readiness self-assessment. Designed to be easy to use on Android (including Termux), desktop and tablets. No account, backend, server-side database, cloud API, npm install or internet is needed to run it locally. Saved audit and action records use the browser’s local IndexedDB.

@@ -30,3 +30,14 @@
 .action-log li{margin:7px 0;overflow-wrap:anywhere}
 .overdue-text{color:#a02d28;font-weight:850}
 @media(max-width:680px){.tracked-action{padding:15px 13px}}
+
+/* v3.1: clear save-and-finish / next assessment journey, advanced tools hidden by default */
+.finish-toolbar{align-items:center;gap:10px}
+.more-actions{width:100%;margin-top:1px;color:#23566c;font-size:13px}
+.more-actions summary{cursor:pointer;width:max-content;max-width:100%;font-weight:750;padding:7px 3px;text-decoration:underline;text-underline-offset:4px}
+.more-actions-content{border:1px solid #d9e7eb;background:#fafdfd;border-radius:12px;padding:12px;margin:8px 0;display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+.more-actions-content p{flex-basis:100%;margin:3px 0}
+.saved-success{border-left:5px solid #19837d;background:#fcfffe}
+.saved-icon{width:44px;height:44px;display:grid;place-items:center;border-radius:50%;background:#e1f4e7;color:#17693e;font-size:24px;font-weight:900;margin-bottom:13px}
+.saved-success .big-rag{margin-bottom:14px}
+@media(max-width:520px){.finish-toolbar>.button{flex:1 1 155px}.more-actions-content>.button{flex:1 1 100%}}
