@@ -89,3 +89,39 @@ A fresh site should be assessed separately. The **Start a new assessment** comma
 To run tests (optional), use `node test.js`. No `npm install` or build command is needed. Update the `CACHE` identifier in `sw.js` whenever you deploy changed files, so installed users receive the newest version on their next online visit.
 
 **Before using this in a commercial or regulated context:** have a competent professional review the question set, applicability branching, priority wording and legal references against the current statutes, guidance and industry context. A self-assessment cannot establish legal compliance automatically.
+
+---
+
+## Version 2.0: audit trail, graphs, sharing and draft documents
+
+This release adds an **offline-first audit records dashboard**. In **Results**, tap **Save dated audit record** to store a separate historical assessment. Previous records are read-only in the app. You can view a RAG rating at a glance, filter by site, inspect the stored actions, and chart weighted scores across reassessments. A **Reassess this site** button starts a fresh questionnaire with the site details copied (but no old answers). **Starting a new assessment does not delete saved audit records.**
+
+The app stores saved snapshots in the device browser's **IndexedDB**; your in-progress assessment remains in the original `localStorage` key and is retained when upgrading from v1. Both forms of storage are specific to the browser/origin: assessments made in local Termux at `127.0.0.1` are separate from those made on GitHub Pages. Saved history does not sync automatically across phones, browsers or those two addresses. For moving records, choose **Export all records + draft**, then **Import saved archive** on the other browser. The archive includes business details, notes, answers, findings and priorities in readable JSON — it is **not encrypted**, and **local snapshots are not tamper-proof**. Export after each assessment and keep encrypted/protected copies in a suitable secure location. Clearing browser data, uninstalling the browser or replacing the phone can remove all locally stored copies.
+
+PDF reports now have **action-priority and answer-profile bar charts** and no longer display the generic `Suggested evidence` lines. **Share PDF** uses the Android sharing sheet in supported browsers, and otherwise downloads the PDF so users can share it using Android Files. Sharing may disclose location, operational gaps or personnel information; review reports and choose a trusted destination. No automatic uploads are performed.
+
+**Draft procedures** downloads a standalone HTML draft describing public protection procedures with site details, uncompleted site-specific fields, review/sign-off requirements and the recorded suggested actions. It is an **unapproved template** and must be completed, checked and signed by the responsible person. It is **not** a complete statutory section 7 document for enhanced duty premises or qualifying events. See the Home Office statutory guidance linked below. The HTML draft can be opened, edited and printed in software that supports HTML.
+
+### Update the existing Termux + GitHub installation
+
+This does **not** create a new repository. Download `Martyns-Law-v2-Update.zip` into Android Downloads (using Chrome for ChatGPT attachments if necessary). Then in Termux:
+
+```sh
+cd ~/martyns-law-offline-app || exit
+# Export any saved v1 JSON backup first if you have important answers.
+unzip -o ~/storage/downloads/Martyns-Law-v2-Update.zip -d ~/martyns-law-offline-app
+node test.js   # optional; install Node with: pkg install nodejs
+# Review changes, then publish
+ git status
+ git add app.js audit.js policy.js pdf.js styles.css index.html sw.js README.md test.js
+ git commit -m "Add local audit records trends report sharing and draft procedures"
+ git push origin main
+```
+
+You can also run it locally using `sh start-termux.sh`, or open your existing GitHub Pages URL after pushing. Reload once or twice while online to allow the service worker cache to upgrade. Confirm the footer says **v2.0**. The update preserves the previous draft because its browser storage key is unchanged.
+
+**Important:** never put saved audit JSON files, completed reports, access controls, detailed site plans or personal data into a public GitHub repository. Keep only the generic app source in Git.
+
+### Verification and limitations
+
+Run `node test.js` to verify scope/rating rules, PDF generation, immutable-in-memory audit snapshot behaviour and escaping in the policy draft. The browser's IndexedDB and Android share-sheet integration need an in-browser test on the target device. The self-assessment provides indicative readiness rather than a regulatory compliance determination; review applicability and requirements against the current Home Office statutory guidance.

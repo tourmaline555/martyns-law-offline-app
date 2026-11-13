@@ -31,6 +31,7 @@ class Pdf {
  kv(label,value){this.lineText(`${label}  ${value||'-'}`,{size:9.5,after:3});}
  block(title,text){this.ensure(36);this.lineText(title,{size:10.1,bold:true,after:3});this.lineText(text,{size:9.2,color:INK,after:6});}
  bar(label,score){this.ensure(31);this.at(label,M,this.y,9.5,true,INK);this.at(score===null?'-':`${Math.round(score)}%`,RIGHT-38,this.y,9.5,true,INK);this.y-=10;this.rect(M,this.y-7,RIGHT-M,7,[.90,.94,.95]);if(score!==null)this.rect(M,this.y-7,(RIGHT-M)*Math.max(0,Math.min(100,score))/100,7,TEAL);this.y-=20;}
+ countBar(label,count,maximum,color=TEAL){this.ensure(31);this.at(label,M,this.y,9.5,true,INK);this.at(String(count),RIGHT-38,this.y,9.5,true,INK);this.y-=10;this.rect(M,this.y-7,RIGHT-M,8,[.90,.94,.95]);if(count>0 && maximum>0)this.rect(M,this.y-7,(RIGHT-M)*count/maximum,8,color);this.y-=20;}
  save(){
   this.pages.forEach((p,i)=>{p.commands+=`${this.color([.83,.87,.90])} RG .5 w ${M} 47 m ${RIGHT} 47 l S\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${M} 33 Tm ${pdfLiteral('Readiness self-assessment  |  Generated on device; no external processing')} Tj ET\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${RIGHT-50} 33 Tm ${pdfLiteral(`Page ${i+1} / ${this.pages.length}`)} Tj ET\n`;});
   const objects=[];
@@ -54,6 +55,8 @@ function generate(state,result){
  const p=new Pdf(),b=state.business,r=result;
  p.title('Preparedness assessment report');
  p.kv('Organisation:',b.name||'Not specified');p.kv('Site / location:',b.site||'Not specified');p.kv('Assessed by:',b.assessor||'Not specified');p.kv('Assessment date:',b.date||new Date().toISOString().slice(0,10));
+ p.kv('Record type:',state._audit?'Saved historical snapshot':'Current assessment - not saved to audit trail');
+ if(state._audit){p.kv('Audit record ID:',state._audit.id);p.kv('Saved on device (UTC):',state._audit.createdAt);}
  p.gap(10);
  p.subtitle('OVERALL READINESS');
  p.lineText(`${r.rag.toUpperCase()}  |  ${r.score===null?'No score':`${Math.round(r.score)}% weighted score`}`,{bold:true,size:21,color:RAG[r.rag]||RAG.Unrated,leading:28,after:3});
@@ -73,7 +76,21 @@ function generate(state,result){
  p.subtitle('SCORES BY SECTION');
  for(const s of r.sections) p.bar(`${s.name}  (${s.answered} scored, ${s.unanswered} unanswered)`,s.max?s.earned/s.max*100:null);
  p.gap(2);
- p.subtitle('WHAT THIS SCORE DOES AND DOES NOT SAY');
+ p.newPage();
+ p.title('Visual readiness summary');
+ const priorityLabels=['Immediate','High','Medium','Low'];
+ const priorityColors=[[.72,.23,.19],[.80,.47,.17],[.91,.66,.23],[.20,.49,.51]];
+ const priorityValues=priorityLabels.map(name=>r.actions.filter(a=>a.priority===name).length);
+ const maxPriority=Math.max(1,...priorityValues);
+ p.subtitle('ACTION PRIORITIES - NUMBER OF ACTIONS');
+ priorityLabels.forEach((name,i)=>p.countBar(name,priorityValues[i],maxPriority,priorityColors[i]));
+ const answerLabels=[['yes','Yes'],['partly','Partly'],['no','No'],['not_sure','Not sure'],['na','N/A'],['','Unanswered']];
+ const answerValues=answerLabels.map(([key])=>r.rows.filter(v=>v.answer===key).length);
+ const maxAnswer=Math.max(1,...answerValues);
+ p.subtitle('ANSWER PROFILE - NUMBER OF QUESTIONS');
+ answerLabels.forEach(([key,name],i)=>p.countBar(name,answerValues[i],maxAnswer, key==='yes'?RAG.Green:key==='partly'?RAG.Amber:key==='no'?RAG.Red:TEAL));
+ p.lineText('These charts show recorded responses and recommended action counts, not the likelihood of a terrorist attack. The RAG result is the private questionnaire score, not a statutory certification.',{size:8.9,color:MUTED});
+  p.subtitle('WHAT THIS SCORE DOES AND DOES NOT SAY');
  p.lineText('This weighted self-assessment is based on the supplied question matrix. It is not an SIA-approved scoring system, a safety guarantee, a certification or a legal compliance determination. Some assessed controls go beyond the express standard-tier legal requirements.',{size:9.1});
  p.lineText('The Act focuses on appropriate, reasonably practicable public protection procedures: evacuation, invacuation, lockdown and communication. Enhanced-tier premises and qualifying events have additional obligations, including measures and documentation. Always review what is safe and proportionate for your circumstances.',{size:9.1});
  p.title('Priority action plan');
@@ -85,7 +102,6 @@ function generate(state,result){
    p.lineText(a.q.text,{size:10,bold:true,after:3});
    p.lineText(`Finding: ${a.finding}`,{size:9,after:2});
    p.lineText(`Recommended action: ${a.action}`,{size:9.3,bold:true,after:2});
-   p.lineText(`Suggested evidence: ${a.q.evidence}`,{size:8.5,color:MUTED,after:2});
    const note=state.notes?.[a.q.id];if(note)p.lineText(`Assessor note: ${note}`,{size:8.6,after:2});
    p.gap(7);
  }
