@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#102c47">
+  <meta name="description" content="Private, offline Martyn's Law readiness self-assessment with weighted RAG and PDF report.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <title>Martyn's Law | Readiness Check</title>
+  <script defer src="questions.js"></script>
+  <script defer src="logic.js"></script>
+  <script defer src="pdf.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="./" id="homeLink" aria-label="Readiness Check home"><span class="brand-mark">M<span>+</span></span><span><strong>Martyn's Law</strong><small>Readiness Check</small></span></a>
+      <div class="header-right"><span class="privacy-label">Private &amp; offline-first</span><button id="helpBtn" type="button" class="text-button">About this check</button></div>
+    </div>
+  </header>
+  <main id="app" class="main" aria-live="polite"></main>
+  <footer class="footer"><span>Independent self-assessment · Not an official government assessment</span><span>v1.0 · Statutory guidance reviewed 13 Nov 2026</span></footer>
+  <noscript><p class="main">This app needs JavaScript enabled. It does not need an internet connection once installed or served locally.</p></noscript>
+  <script>
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  }
+  </script>
+</body>
+</html>
