@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm');
 const Integrity=require('./integrity.js'),Logic=require('./logic.js');
 const Q=require('./question-data.json');
-const fixture=JSON.parse(fs.readFileSync('/mnt/data/Premivue-Synthetic-3-Monthly-Assessments/Premivue-DEMO-ALL-THREE.json','utf8'));
+const fixture=JSON.parse(fs.readFileSync(require('node:path').join(__dirname,'tests/fixtures/riverside-three.json'),'utf8'));
 const valid=Integrity.validateBundle(fixture,Q,Logic);
 assert.equal(valid.records.length,3);assert.equal(valid.records[0].importValidation,'verified');
 let tampered=structuredClone(fixture);tampered.records[0].result.score=100;tampered.records[0].result.rag='Green';

@@ -11,7 +11,7 @@ const iso=t=>typeof t==='string'&&Number.isFinite(Date.parse(t))&&t.length<=35;
 const day=t=>{if(typeof t!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(t))return false;const date=new Date(t+'T00:00:00Z');return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===t;};
 const dateOf=r=>day(r?.business?.date)?r.business.date:iso(r?.createdAt)?r.createdAt.slice(0,10):'';
 const chronological=(a,b)=>dateOf(a).localeCompare(dateOf(b))||String(a.createdAt||'').localeCompare(String(b.createdAt||''))||String(a.id).localeCompare(String(b.id));
-const importedTrust=r=>r.importValidation||((r.appVersion==='4.0'||r.appVersion==='3.9')?'local':'legacy');
+const importedTrust=r=>r.importValidation||((r.appVersion==='4.1'||r.appVersion==='4.0'||r.appVersion==='3.9')?'local':'legacy');
 const verified=r=>['verified','local'].includes(importedTrust(r));
 function compareVersions(a,b){const x=a?.result||a,y=b?.result||b;
  const methodA=a?.scoringVersion||x?.scoringVersion||'legacy',methodB=b?.scoringVersion||y?.scoringVersion||'legacy';
@@ -59,25 +59,39 @@ function planMerge(local,remote){const localMap=new Map(local.map(a=>[a.id,a]));
 function stateAt(action,history,when){
  if(!action)return null;
  const whenTime=day(when)?when+'T23:59:59.999Z':when;
- const log=(history||[]).filter(e=>e.actionId===action.id&&iso(e.at)&&e.at<=whenTime).sort((a,b)=>a.at.localeCompare(b.at));
- if(iso(action.createdAt)&&action.createdAt>whenTime)return {status:'Not yet raised',evidence:'created later'};
- // Modern structured events are used as the historical source of truth.
- const create=log.find(e=>e.type==='created');
- let status=create?.after?.status||'Open';let seen=!!create;
- for(const e of log){if(e.after&&STATUS.has(e.after.status)){status=e.after.status;seen=true;}
-   else if(e.type==='reopened'){status='Open';seen=true;}
-   else if(e.type==='updated'){
-     const match=String(e.detail).match(/status:\s*(?:\S[\s\S]*?)\s*->\s*(Open|In progress|On hold|Completed)/);
-     if(match){status=match[1];seen=true;}
-   }
+ if(!iso(whenTime))return {status:'Not recorded',recorded:false,evidence:'invalid assessment date'};
+ const log=(history||[]).filter(e=>e.actionId===action.id&&iso(e.at)&&e.at<=whenTime).sort((a,b)=>a.at.localeCompare(b.at)||String(a.id).localeCompare(String(b.id)));
+ let status='',recordedAt='',owner='',dueDate='',raisedAt='',evidence='';
+ const creation=log.find(e=>e.type==='created');
+ if(creation){status=STATUS.has(creation.after?.status)?creation.after.status:'Open';recordedAt=creation.at;raisedAt=creation.at;evidence='dated creation event';
+  if(creation.after){owner=creation.after.owner||'';dueDate=creation.after.dueDate||'';}}
+ for(const e of log){
+  if(e.type==='created')continue;
+  if(e.after&&STATUS.has(e.after.status)){
+   status=e.after.status;recordedAt=e.at;evidence='dated status event';
+   if(Object.hasOwn(e.after,'owner'))owner=e.after.owner||'';
+   if(Object.hasOwn(e.after,'dueDate'))dueDate=e.after.dueDate||'';
+  }else if(e.type==='reopened'){
+   status='Open';recordedAt=e.at;evidence='dated reopening event';
+  }else if(e.type==='updated'){
+   // Older actions may have only descriptive log entries; never infer a status from vague prose.
+   const match=String(e.detail||'').match(/(?:^|;)\s*status:\s*[^;]*?\s*->\s*(Open|In progress|On hold|Completed)(?:;|$)/);
+   if(match){status=match[1];recordedAt=e.at;evidence='dated status event';}
+  }
  }
- if(action.status==='Completed'&&iso(action.completedAt)&&action.completedAt<=whenTime&&!log.some(e=>e.type==='reopened'&&e.at>action.completedAt))return {status:'Completed',evidence:'dated completion'};
- if(iso(action.updatedAt)&&action.updatedAt<=whenTime&&action.status!=='Completed'&&!log.some(e=>e.type==='reopened'&&e.at>action.updatedAt))return {status:action.status,evidence:'last known dated action update'};
- if(seen)return {status,evidence:'dated action history'};
- if(action.status==='Completed'&&iso(action.completedAt)&&action.completedAt<=whenTime)return {status:'Completed',evidence:'dated completion'};
- if(action.status==='Completed'&&iso(action.completedAt)&&action.completedAt>whenTime)return {status:'Not completed at assessment date',evidence:'completed later'};
- if(iso(action.createdAt)&&action.createdAt<=whenTime&&action.status!=='Completed'&&iso(action.updatedAt)&&action.updatedAt<=whenTime)return {status:action.status,evidence:'action last updated before assessment'};
- return {status:'Historical status unverified',evidence:'legacy action log lacks sufficient detail'};
+ // A dated completion is a valid status fact even for older, unstructured logs.
+ if(action.status==='Completed'&&iso(action.completedAt)&&action.completedAt<=whenTime&&
+    !log.some(e=>e.type==='reopened'&&e.at>action.completedAt)&&(!recordedAt||action.completedAt>=recordedAt)){
+   status='Completed';recordedAt=action.completedAt;evidence='dated completion record';
+ }
+ // A current-state record is usable only when its most recent revision predates the assessment.
+ // Never use today's owner or deadline for an older assessment if subsequent edits occurred.
+ if(iso(action.updatedAt)&&action.updatedAt<=whenTime&&(!recordedAt||action.updatedAt>=recordedAt)&&STATUS.has(action.status)){
+   status=action.status;recordedAt=action.updatedAt;evidence='dated action record';owner=action.owner||'';dueDate=action.dueDate||'';
+ }
+ if(!recordedAt)return {status:'Not recorded',recorded:false,evidence:'no dated status at assessment'};
+ if(!raisedAt && iso(action.createdAt)&&action.createdAt<=whenTime)raisedAt=action.createdAt;
+ return {status,recorded:true,at:recordedAt,raisedAt,owner,dueDate,evidence};
 }
 const api={METHOD,PREVIOUS,day,dateOf,chronological,verified,compareVersions,validateRecord,validateBundle,actionDiff,planMerge,stateAt};
 root.PremivueIntegrity=api;

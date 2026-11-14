@@ -88,6 +88,17 @@ class Pdf {
  }
 }
 const B=root.ReadinessBasis || (typeof require==='function' ? require('./basis.js') : null);
+const CURRENT_QUESTIONS=root.ASSESSMENT_QUESTIONS||(typeof require==='function'?require('./question-data.json'):[]);
+const REPORT_REFRESH=new Set(['Q8','Q25','Q30','Q34']);
+function adviceFor(a){
+ if(!REPORT_REFRESH.has(a.q?.id)||!['no','partly'].includes(a.answer))return a.action||'Review the identified gap.';
+ const q=CURRENT_QUESTIONS.find(x=>x.id===a.q.id);
+ return (q?.[a.answer==='no'?'actionNo':'actionPartly'])||a.action||'Review the identified gap.';
+}
+function ukDate(s){
+ const isoDate=String(s||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(isoDate))return '';
+ const [y,m,d]=isoDate.split('-');return `${Number(d)} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(m)-1]} ${y}`;
+}
 const mapAnswer={yes:'Yes',partly:'Partly',no:'No',not_sure:'Not sure',na:'N/A'};
 const priorityColours={Immediate:RAG.Red,High:RAG.Amber,Medium:TEAL,Low:MUTED};
 function pct(score){return score===null||!Number.isFinite(score)?'Not rated':Math.round(score)+'%';}
@@ -191,31 +202,54 @@ function generate(state,result,tracker=[],options={}){
  p.lineText('Source: Home Office, Terrorism (Protection of Premises) Act 2025 statutory guidance (updated 25 August 2026). Verify current official guidance and scope before making compliance decisions.',{size:8.2,color:MUTED,leading:11.5,after:3});
  // Clear and succinct full action plan, not repeated in full question record.
  nextPage(p,'Prioritised action plan');
- p.lineText('Each action shows its readiness priority and legal/advisory basis. Validate applicability and record responsibility in the action tracker.',{size:9,color:MUTED,after:13});
+ p.lineText(historical?
+   'Action status is shown at the assessment date ONLY where a dated log or action record supports it. Otherwise it says Not recorded. Owners and deadlines appear only when historically documented.':
+   'Actions are prioritised by preparedness urgency; legal and advisory labels are separate. Current tracker information is dated when available.',
+   {size:8.8,color:MUTED,leading:12.5,after:8});
+ p.lineText('Recommendations use current Premivue report wording; original assessment answers and dated action logs are unchanged.',{size:8.1,color:MUTED,leading:11.3,after:11});
  const mapTracker=new Map((Array.isArray(tracker)?tracker:[]).map(a=>[a.questionId,a]));
  if(!actions.length)p.lineText('No actions generated from the recorded answers.',{size:9.5});
- for(const a of (detailed?actions:actions.slice(0,8))){
+ const displayed=detailed?actions:actions.slice(0,8);
+ for(const a of displayed){
    const basis=B?.classify?.(a.q.id,sc,b)||{label:'Preparedness',reference:''};
    const tr=mapTracker.get(a.q.id);
    const headline=`${a.q.id}  /  ${a.q.section}   -   ${a.priority.toUpperCase()}${(r.critical||[]).some(q=>q.id===a.q.id)||(r.criticalPartly||[]).some(q=>q.id===a.q.id)?'   /   CRITICAL':''}`;
-   const recommendation=a.action||'Review the identified gap.';
-   const historicalStatus=historical&&tr&&I?.stateAt?I.stateAt(tr,options.actionEvents||[],b.date):null;
-   const label=`${basis.label}${tr?'   |   '+(historicalStatus?historicalStatus.status:tr.status):''}`;
-   const add=tr?(historical?
-     `Action status at assessment: ${historicalStatus?.status||'Unverified'} (${historicalStatus?.evidence||'no dated log'}).`:
-     `Current status as at ${generatedAt.slice(0,10)}: ${tr.status}; Owner: ${tr.owner||'Unassigned'}; Due: ${tr.dueDate||'Not set'}${tr.completedAt?'; Completed: '+tr.completedAt.slice(0,10):''}`):'';
-   const completedNote=tr?.status==='Completed'&&tr.note?`Closure note (current): ${tr.note}`:'';
-   const h=35+lineCount(recommendation,RIGHT-M-12,9.15,false)*13+lineCount(label,RIGHT-M-12,8.3,false)*11+(add?lineCount(add,RIGHT-M-12,8.2,false)*12:0)+(completedNote&&!historical?lineCount(completedNote,RIGHT-M-12,8,false)*12:0);
-   p.ensure(Math.max(58,h-6));
+   const recommendation=adviceFor(a);
+   const statusAt=historical&&tr&&I?.stateAt?I.stateAt(tr,options.actionEvents||[],b.date):null;
+   let label=basis.label,metadata='';
+   if(historical){
+      if(statusAt?.recorded){
+         label+='  |  '+statusAt.status+' ('+(statusAt.raisedAt?.slice(0,10)===statusAt.at?.slice(0,10)?'raised ':'recorded ')+ukDate(statusAt.at)+')';
+         const info=[];
+         if(statusAt.raisedAt&&statusAt.raisedAt.slice(0,10)!==statusAt.at.slice(0,10))info.push('Raised '+ukDate(statusAt.raisedAt));
+         if(statusAt.owner)info.push('Owner: '+statusAt.owner);
+         if(statusAt.dueDate)info.push('Due: '+ukDate(statusAt.dueDate));
+         metadata=info.join('   |   ');
+      }else label+='  |  Status: Not recorded';
+   }else if(tr){
+      label+='  |  '+tr.status;
+      const info=[];
+      if(tr.owner)info.push('Owner: '+tr.owner);
+      if(tr.dueDate)info.push('Due: '+ukDate(tr.dueDate));
+      if(tr.completedAt)info.push('Completed: '+ukDate(tr.completedAt));
+      info.push('Tracker updated: '+ukDate(tr.updatedAt||generatedAt));
+      metadata=info.join('   |   ');
+   }
+   const closure=tr?.status==='Completed'&&!historical&&tr.note?'Closure: '+tr.note:'';
+   const height=32+lineCount(recommendation,RIGHT-M-10,9.15,false)*12.8+
+      lineCount(label,RIGHT-M-10,8.1,false)*10.8+
+      (metadata?lineCount(metadata,RIGHT-M-10,8.1,false)*11:0)+
+      (closure?lineCount(closure,RIGHT-M-10,8,false)*11.5:0);
+   p.ensure(Math.max(48,height));
    p.rule(M,p.y+12,RIGHT-M,[.85,.89,.92]);
    p.at(headline,M,p.y,9.2,true,a.priority==='Immediate'?RAG.Red:a.priority==='High'?RAG.Amber:TEAL);p.y-=15;
    p.lineText(label,{size:8.1,color:MUTED,leading:10.8,after:2});
    p.lineText(recommendation,{size:9.15,leading:12.4,after:1});
-   if(add)p.lineText(add,{size:8.2,color:MUTED,after:2});
-   if(completedNote&&!historical)p.lineText(completedNote,{size:8,color:MUTED,after:2});
-   p.gap(4);
+   if(metadata)p.lineText(metadata,{size:8.1,color:MUTED,leading:11.2,after:1});
+   if(closure)p.lineText(closure,{size:8,color:MUTED,leading:11.2,after:1});
+   p.gap(3);
  }
- if(!detailed&&actions.length>8){p.gap(9);p.lineText(`${actions.length-8} further actions are available in the full assessment appendix and action tracker.`,{size:9,bold:true,color:TEAL,after:3});}
+ if(!detailed&&actions.length>8){p.gap(9);p.lineText(`${actions.length-8} further actions are in the full assessment appendix and action tracker.`,{size:9,bold:true,color:TEAL,after:3});}
  // Scope and legal disclaimers are presented once in the summary and scoring page.
  // Keep question-by-question content in the optional report, with a plain compact record.
  if(detailed){

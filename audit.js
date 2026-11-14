@@ -27,7 +27,7 @@ function snapshot(state,report){
  const id=typeof root.crypto?.randomUUID==='function'?root.crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`;
  const createdAt=new Date().toISOString();
  return {id,createdAt,format:'ml-record-v2',scoringVersion:report.scoringVersion||'legacy',questionnaireVersion:'v4.0-integrity',siteKey:siteKey(state.business),
- business:clone(state.business),answers:clone(state.answers),notes:clone(state.notes||{}),result:clone(report),appVersion:'4.0',importValidation:'local',importValidationNote:'Created in this browser; not independently audited'};
+ business:clone(state.business),answers:clone(state.answers),notes:clone(state.notes||{}),result:clone(report),appVersion:'4.1',importValidation:'local',importValidationNote:'Created in this browser; not independently audited'};
 }
 async function list(){let out=[];await transaction([ASSESS],'readonly',tx=>{all(tx.objectStore(ASSESS)).then(r=>{out=r;});});
  // Existing local v3.9 snapshots were never marked as verified. Check without rewriting history.
