@@ -31,7 +31,7 @@ function classify(id,scope={},business={}){
  const core=CORE.has(id),support=SUPPORT.has(id),good=GOOD.has(id);
  if(!core&&!support&&!good)return {kind:'scope',label:'Scope screen',reference:'Chapters 4-5',detail:'This identifies potential applicability and is not readiness-scored.'};
  let kind=core?'linked':support?'advisory':'good';
- if(id==='Q35'&&!enhanced)kind='advisory';
+ if(id==='Q35')kind='advisory';
  if(id==='Q38'&&['no','na'].includes(business.otherResponsible))kind='advisory';
  if(id==='Q38'&&(!business.otherResponsible||business.otherResponsible==='unknown'))kind='conditional';
  if(['Q24','Q25','Q31'].includes(id)&&enhanced)kind='linked';

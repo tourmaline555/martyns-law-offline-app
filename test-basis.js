@@ -12,7 +12,7 @@ assert.equal(B.classify('Q24',enhanced).kind,'linked');
 assert.equal(B.classify('Q31',standard).kind,'advisory');
 assert.equal(B.classify('Q31',enhanced).kind,'linked');
 assert.equal(B.classify('Q35',standard).kind,'advisory');
-assert.equal(B.classify('Q35',enhanced).kind,'linked');
+assert.equal(B.classify('Q35',enhanced).kind,'advisory'); // A named security lead alone is not the section 10 senior-individual designation.
 assert.match(B.classify('Q5',standard).detail,/not have an express duty to document/i);
 assert.match(B.overview(standard).join(' '),/section 9 notification/i);
 console.log('PASS: classification mapping, tier variations, scope caveats.');

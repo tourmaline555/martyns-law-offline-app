@@ -70,3 +70,14 @@ Tests: `node test-v36.js` and `node test.js`, plus the other `test-*.js` files.
 
 ## v3.8 identity update
 See RELEASE-v3.8.md. App and PDF branding now match the Premivue website starter. No data migration or scoring changes.
+
+## v3.9 — Red-team remediation
+
+See [RELEASE-v3.9.md](RELEASE-v3.9.md) for a full change log and limitations. New commands:
+
+```sh
+node test-v39.js
+node test-crypto.js
+```
+
+Backups exported in this release are **password-encrypted**. The app's browser database is **not** encrypted or access-controlled. Store the backup passphrase separately. Existing plaintext archive imports remain supported for migration.

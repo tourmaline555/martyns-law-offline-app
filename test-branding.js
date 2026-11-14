@@ -11,7 +11,7 @@ assert.match(app,/Preparedness you can/);
 assert.match(app,/About Premivue/);
 assert.match(css,/--pv-mint:#64e0c9/);
 assert.equal(man.short_name,'Premivue');
-assert.match(sw,/ml-check-v38-premivue-brand/);
+assert.match(sw,/ml-check-v39-reliability/);
 assert.match(sw,/favicon\.svg/);
 assert.ok(fs.statSync(path.join(root,'assets/icon-192.png')).size>1000);
 assert.ok(fs.statSync(path.join(root,'assets/icon-512.png')).size>2000);

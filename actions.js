@@ -22,7 +22,9 @@ function operate(storeNames,mode,fn){return open().then(db=>new Promise((resolve
 function all(store){return new Promise((resolve,reject)=>{const out=[];const req=store.openCursor();req.onsuccess=()=>{const c=req.result;if(c){out.push(c.value);c.continue();}else resolve(out);};req.onerror=()=>reject(req.error);});}
 async function list(){let rows=[];await operate([ACTIONS],'readonly',tx=>{all(tx.objectStore(ACTIONS)).then(r=>{rows=r;});});return rows.sort((a,b)=>(PRIORITY[a.priority]??5)-(PRIORITY[b.priority]??5)||a.siteKey.localeCompare(b.siteKey)||a.questionId.localeCompare(b.questionId,undefined,{numeric:true}));}
 async function events(){let rows=[];await operate([EVENTS],'readonly',tx=>{all(tx.objectStore(EVENTS)).then(r=>{rows=r;});});return rows.sort((a,b)=>a.at.localeCompare(b.at));}
-function siteKey(b){return [b.name||'',b.site||''].map(x=>String(x).trim().toLowerCase().replace(/\s+/g,' ')).join('|');}
+function siteKey(b){return (typeof b.siteKeyId==='string'&&b.siteKeyId.startsWith('site:'))?b.siteKeyId:
+  (typeof b.siteKeyId==='string'&&b.siteKeyId.includes('|'))?b.siteKeyId:
+  [b.name||'',b.site||''].map(x=>String(x).trim().toLowerCase().replace(/\s+/g,' ')).join('|');}
 function actionId(site,questionId){return JSON.stringify([site,questionId]);}
 function eventFor(id,type,detail,at=new Date().toISOString()){return {id:uuid(),actionId:id,type,detail:String(detail).slice(0,650),at};}
 function checkedDate(v){return typeof v==='string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v+'T00:00:00Z')) ? v : '' ;}

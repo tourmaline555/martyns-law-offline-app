@@ -86,7 +86,7 @@ function generate(state,result,tracker=[],options={}){
  const criticalFlags=(r.critical||[]).length+(r.criticalPartly||[]).length;
  const lowSections=r.lowSections||[];
  const scopeReview=!!sc.scopeUnknown || String(sc.premises||'').startsWith('Review required');
- const status=state._audit?'ARCHIVED / READ-ONLY':'DRAFT / NOT ARCHIVED';
+ const status=state._audit?'ARCHIVED / READ-ONLY':r.provisional?'PROVISIONAL / NOT ARCHIVED':'DRAFT / NOT ARCHIVED';
  const title=String(b.name||'Organisation').slice(0,120);
  // Page one: actual management decision and prioritised risks; no full question duplication.
  p.title('Assessment summary');
@@ -94,6 +94,7 @@ function generate(state,result,tracker=[],options={}){
  p.lineText(`${b.site||'Site not recorded'}  |  Assessed ${b.date||'Date not recorded'}`,{size:9,color:MUTED,after:2});
  p.lineText(`Assessor: ${b.assessor||'Not supplied'}   |   ${status}`,{size:8.4,color:MUTED,after:4});
  if(state._audit?.id)p.lineText(`Audit reference: ${state._audit.id}`,{size:8.4,color:MUTED,after:4});
+ if(r.provisional)p.lineText('PROVISIONAL: unanswered questions or unjustified N/A answers; check completeness before relying on this score.',{size:8.6,bold:true,color:RAG.Amber,after:3});
  p.gap(7);
  // Distinguish legal scope from self-assessment readiness.
  p.subtitle('01  Legal scope - preliminary');
@@ -121,7 +122,8 @@ function generate(state,result,tracker=[],options={}){
  p.lineText(`${criticalFlags} critical safeguards flagged   |   ${lowSections.length} very low-scoring sections   |   ${actions.length} improvement actions`,{size:8.8,after:4});
  const reasons=r.ragReasons||[];
  if(reasons.length)p.lineText('Rating limited by: '+reasons.join('; '),{size:8.7,bold:true,color:RAG.Amber,after:4});
- p.gap(9);
+ p.lineText(`${(r.dutyProcedureGaps||[]).length} section 5 procedure checks need confirmation (separate from advisory controls).`,{size:8.5,after:4});
+ p.gap(5);
  p.subtitle('03  Immediate management attention');
  if(actions.length){
   const ordered=actions.slice().sort((a,z)=>Number(z.q?.critical==='Y')-Number(a.q?.critical==='Y'));
@@ -159,7 +161,9 @@ function generate(state,result,tracker=[],options={}){
  p.lineText(`Premises use: ${b.activity||'Not specified'}    Expected peak: ${b.peak||'Not supplied'}    Public building: ${b.building||'Not sure'}`,{size:8.8,after:4});
  p.lineText(`Events: ${b.events||'Not sure'}    Event peak: ${b.eventPeak||'Not supplied'}    Next review: ${b.reviewDate||'Not set'}`,{size:8.8,after:5});
  p.gap(5);smallRule(p);
- p.lineText('Scoring: Yes = 2, Partly = 1, No/Not sure = 0, multiplied by question weights. Green 75%+, Amber 50%-74.99%, Red below 50%; critical safeguards, unanswered questions and very low sections can prevent Green. This is Premivue methodology, not an official statutory standard.',{size:8.4,color:MUTED,leading:12,after:3});
+ p.lineText('Scoring version: '+(r.scoringVersion||'historical method')+'   |   Coverage: '+(r.coverage??'Not recorded')+'%',{size:8.1,color:MUTED,leading:11.5,after:2});
+ p.lineText('Scoring: Yes = 2, Partly = 1, No/Not sure = 0, multiplied by question weights. Green 75%+, Amber 50%-74.99%, Red below 50%; fewer than 80% valid answers withholds a rating; other critical, unanswered or very low-section gaps can prevent Green. This is Premivue methodology, not an official statutory standard.',{size:8.4,color:MUTED,leading:12,after:3});
+ p.lineText('SIA planning tools (10 Nov 2026): standard-tier planning tool / enhanced-tier template. Premivue does not complete or submit these official documents.',{size:8.0,color:MUTED,leading:11,after:3});
  p.lineText('Source: Home Office, Terrorism (Protection of Premises) Act 2025 statutory guidance (updated 25 August 2026). Verify current official guidance and scope before making compliance decisions.',{size:8.2,color:MUTED,leading:11.5,after:3});
  // Clear and succinct full action plan, not repeated in full question record.
  nextPage(p,'Prioritised action plan');
@@ -169,7 +173,7 @@ function generate(state,result,tracker=[],options={}){
  for(const a of actions){
    const basis=B?.classify?.(a.q.id,sc,b)||{label:'Preparedness',reference:''};
    const tr=mapTracker.get(a.q.id);
-   const headline=`${a.q.id}  /  ${a.q.section}   -   ${a.priority.toUpperCase()}${a.q.critical==='Y'?'   /   CRITICAL':''}`;
+   const headline=`${a.q.id}  /  ${a.q.section}   -   ${a.priority.toUpperCase()}${(r.critical||[]).some(q=>q.id===a.q.id)||(r.criticalPartly||[]).some(q=>q.id===a.q.id)?'   /   CRITICAL':''}`;
    const recommendation=a.action||'Review the identified gap.';
    const label=`${basis.label}${tr?'   |   '+tr.status:''}`;
    const add=`${tr?'Owner: '+(tr.owner||'Unassigned')+'   |   Due: '+(tr.dueDate||'Not set'):''}`;
@@ -188,7 +192,7 @@ function generate(state,result,tracker=[],options={}){
    nextPage(p,'Appendix - all question responses');
    p.lineText('Detailed audit appendix. Original answers and assessor notes; recommendations are listed once in the preceding action plan.',{size:9,color:MUTED,after:11});
    for(const {q,answer} of rows){
-     const head=`${q.id}   ${mapAnswer[answer]||'Unanswered'}   |   ${q.section}${q.critical==='Y'?'   |   Critical':''}`;
+     const head=`${q.id}   ${mapAnswer[answer]||'Unanswered'}   |   ${q.section}${(r.critical||[]).some(x=>x.id===q.id)||(r.criticalPartly||[]).some(x=>x.id===q.id)?'   |   Critical':''}`;
      const qtxt=q.text||'';
      const note=state.notes?.[q.id];
      const h=27+lineCount(qtxt,RIGHT-M-8,9.1,false)*13+(note?lineCount('Note: '+note,RIGHT-M-8,8.2,false)*11+5:0);

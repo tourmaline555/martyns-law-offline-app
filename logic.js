@@ -4,6 +4,15 @@
 const SPECIAL_USES = new Set(['worship','childcare','school','further']);
 const SCORE = {yes:2,partly:1,no:0,not_sure:0};
 const PRIORITY = {Immediate:0,High:1,Medium:2,Low:3,Maintain:4};
+// Only these advisory checks can reasonably be inapplicable without removing a statutory-linked control.
+// The assessor must still give a meaningful reason; routing makes other irrelevant items disappear.
+const NA_ALLOWED = new Set(['Q22','Q23','Q37']);
+const METHODOLOGY='premivue-2026-v39-coverage-and-tier';
+function isEnhanced(scope){return scope.premises==='Enhanced tier'||scope.event==='Potential qualifying event (enhanced duties)';}
+function isScoredCritical(q,scope){return q.critical==='Y' && q.id!=='Q35';}
+function relevantNa(q,b,notes){return NA_ALLOWED.has(q.id)&&typeof notes?.[q.id]==='string'&&notes[q.id].trim().length>=15;}
+function scoredIds(rows){return rows.filter(r=>['yes','partly','no','not_sure'].includes(r.answer)).map(r=>r.q.id).sort();}
+
 function countNumber(v){if(v === null || v === '' || v === undefined) return null; const n=Number(v);return Number.isSafeInteger(n) && n>=0 ? n : null;}
 function computeScope(b){
   // Preliminary scope screening, not a statutory legal determination. Chapters 4-5,
@@ -56,62 +65,79 @@ function computeScope(b){
   if(b.shared==='yes' && b.otherResponsible==='no') reasons.push('Shared use does not necessarily mean several responsible persons; clarify control.');
   return {premises,event,special,peak,eventPeak,eventLocation,scopeUnknown:premises.startsWith('Review required')||event.startsWith('Review required'),reasons};
 }
-function activeQuestions(questions,b){return questions.filter(q=>q.section!=='Scope' && (q.section!=='Events'||b.events==='yes'||b.events==='unknown') && (q.id!=='Q38'||b.shared!=='no'));}
-function summarize(questions,b,answers){
-  const active=activeQuestions(questions,b), sections={};
+function activeQuestions(questions,b){
+  // Only events at the assessed premises contribute to this premises assessment.
+  // Unknown/mixed locations must be clarified or assessed separately rather than inflating this site's readiness.
+  const siteEvents=(b.events==='yes'||b.events==='unknown')&&(b.eventLocation==='at_site'||(!b.eventLocation&&!b.siteId));
+  return questions.filter(q=>q.section!=='Scope' && (q.section!=='Events'||siteEvents) && (q.id!=='Q38'||b.shared!=='no'));
+}
+function summarize(questions,b,answers,notes={}){
+  const active=activeQuestions(questions,b),scope=computeScope(b),sections={};
   let max=0,earned=0,answered=0,na=0,unanswered=0;
-  const critical=[]; const criticalPartly=[]; const actions=[]; const rows=[];
+  const critical=[],criticalPartly=[],actions=[],rows=[],invalidNa=[];
   for(const q of active){
     if(!sections[q.section])sections[q.section]={name:q.section,earned:0,max:0,answered:0,unanswered:0,na:0};
-    const sec=sections[q.section], answer=answers[q.id];
-    if(answer==='na') {if(q.critical==='Y'){unanswered++;sec.unanswered++;rows.push({q,answer:''});}else{na++;sec.na++;rows.push({q,answer});}continue;}
+    const sec=sections[q.section],answer=answers[q.id],criticalHere=isScoredCritical(q,scope);
+    if(answer==='na'){
+      if(relevantNa(q,b,notes)){na++;sec.na++;rows.push({q,answer});}
+      else{unanswered++;sec.unanswered++;invalidNa.push(q.id);rows.push({q,answer:'',invalidNa:true});}
+      continue;
+    }
     if(!(answer in SCORE)){unanswered++;sec.unanswered++;rows.push({q,answer:''});continue;}
     const w=Number(q.weight)||1;
-    earned += SCORE[answer]*w;max+=2*w;answered++;
+    earned+=SCORE[answer]*w;max+=2*w;answered++;
     sec.earned+=SCORE[answer]*w;sec.max+=2*w;sec.answered++;
-    const triggered=q.critical==='Y' && (answer==='no'||answer==='not_sure');
-    if(triggered) critical.push(q);
-    if(q.critical==='Y' && answer==='partly') criticalPartly.push(q);
-    if(answer==='no'||answer==='not_sure'||answer==='partly'){
-      const negative=answer!=='partly';
-      actions.push({q,answer,priority:negative?q.priorityNo:q.priorityPartly,action:negative?q.actionNo:q.actionPartly,finding:negative?q.findingNo:q.findingPartly,critical:triggered});
+    const triggered=criticalHere && ['no','not_sure'].includes(answer);
+    if(triggered)critical.push(q);
+    if(criticalHere&&answer==='partly')criticalPartly.push(q);
+    if(['no','not_sure','partly'].includes(answer)){
+      const negative=answer!=='partly', unknown=answer==='not_sure';
+      let priority=negative?q.priorityNo:q.priorityPartly;
+      // A named senior individual under section 10 is not a universal standard-tier duty.
+      if(q.id==='Q35')priority=negative?'High':'Medium';
+      actions.push({q,answer,priority,action:negative?q.actionNo:q.actionPartly,
+        finding:unknown?`Not verified: the assessor could not confirm the answer to: ${q.text}`:negative?q.findingNo:q.findingPartly,
+        critical:triggered||criticalHere&&answer==='partly'});
     }
     rows.push({q,answer});
   }
-  const scope=computeScope(b);
-  // Tailor the existing recommendation text to the legal duty tier without changing
-  // scoring, priorities or which gaps produce actions. These texts are snapshot on save.
   const basis=root.ReadinessBasis;
-  if(basis?.recommendation)for(const a of actions){a.action=basis.recommendation(a.q.id,a.answer,scope,b,a.action);}
-  const score = max ? Math.round(10000*earned/max)/100 : null;
+  for(const a of actions){
+    if(basis?.recommendation)a.action=basis.recommendation(a.q.id,a.answer,scope,b,a.action);
+    if(a.answer==='not_sure')a.action='VERIFY FIRST: seek confirmation from the person responsible and review the relevant arrangements. If the safeguard is missing, '+(a.action||'agree a proportionate improvement');
+  }
+  const rawScore=max?Math.round(10000*earned/max)/100:null;
+  const coverage=active.length?Math.round((answered+na)/active.length*10000)/100:0;
+  // Do not display a deceptively perfect score from a very small number of answered questions.
+  const score=coverage<80?null:rawScore;
   let rag=score===null?'Unrated':score>=75?'Green':score>=50?'Amber':'Red';
-  // Safeguard guardrails cap GREEN at AMBER; they never inflate or reweight the score.
-  // This is an explicit app methodology, NOT a scoring rule prescribed by the Act.
-  const lowSections=Object.values(sections).filter(s=>s.answered>=2 && s.max>0 && s.earned/s.max<0.25).map(s=>s.name);
+  const lowSections=Object.values(sections).filter(x=>x.answered>=2&&x.max>0&&x.earned/x.max<.25).map(x=>x.name);
   const ragReasons=[];
+  if(coverage<80)ragReasons.push('Insufficient coverage to rate: '+coverage+'% of applicable questions have valid answers (minimum 80% for a provisional score).');
   if(rag==='Green'){
-    if(critical.length)ragReasons.push('Critical safeguard answered No / Not sure: '+critical.map(q=>q.id).join(', '));
-    if(criticalPartly.length)ragReasons.push('Critical safeguard only partly in place: '+criticalPartly.map(q=>q.id).join(', '));
-    if(unanswered)ragReasons.push('Unanswered applicable readiness questions: '+unanswered);
+    if(critical.length)ragReasons.push('Critical procedure answered No / Not sure: '+critical.map(q=>q.id).join(', '));
+    if(criticalPartly.length)ragReasons.push('Critical procedure partly in place: '+criticalPartly.map(q=>q.id).join(', '));
+    if(unanswered)ragReasons.push('Unanswered / invalid N/A questions: '+unanswered);
     if(lowSections.length)ragReasons.push('Severe section gap (below 25%): '+lowSections.join(', '));
     if(ragReasons.length)rag='Amber';
   }
-  actions.sort((a,b)=>(PRIORITY[a.priority]??5)-(PRIORITY[b.priority]??5) || (Number(b.q.weight)||0)-(Number(a.q.weight)||0) || a.q.id.localeCompare(b.q.id,undefined,{numeric:true}));
+  actions.sort((a,b)=>(PRIORITY[a.priority]??5)-(PRIORITY[b.priority]??5)||(Number(b.q.weight)||0)-(Number(a.q.weight)||0)||a.q.id.localeCompare(b.q.id,undefined,{numeric:true}));
   const questionBank=questions.filter(q=>q.section!=='Scope').length;
-  // Potentially conflicting interpretations; invite review without altering the score.
-  const answerChecks=[];
-  if(answers.Q5==='yes'){
-    for(const id of ['Q6','Q8','Q10','Q11','Q12']){
-      if(['partly','no','not_sure'].includes(answers[id]))answerChecks.push('Q5 says all four protection procedures are in place, but '+id+' reports '+(answers[id]==='partly'?'a partly effective procedure':'a serious or unverified gap')+'. Check whether Q5 should remain Yes and record what is missing.');
-    }
-  }
-  if(answers.Q8==='partly' && answers.Q11==='yes')answerChecks.push('Q11 confirms some entry/exit lockdown capability, while Q8 says activation is only partly effective. These assess different things: confirm whether lockdown could be implemented promptly and safely.');
-  if(answers.Q17==='yes' && ['no','not_sure'].includes(answers.Q32))answerChecks.push('Q17 says evacuation/lockdown drills were carried out, but Q32 says procedure effectiveness was not checked. Confirm what was actually tested.');
-  if(answers.Q16==='yes' && ['no','not_sure'].includes(answers.Q26))answerChecks.push('Q16 says staff know how to report concerns, but Q26 indicates no simple reporting route for suspicious activity. Clarify the difference.');
-  return {score,rag,earned,max,answered,unanswered,na,total:active.length,questionBank,skippedByRouting:questionBank-active.length,critical,criticalPartly,lowSections,ragReasons,answerChecks,actions,rows,sections:Object.values(sections),scope,provisional:unanswered>0,scoringVersion:'matrix-2026-v2-safeguards'};
+  const answerConflicts=[];
+  if(answers.Q5==='yes')for(const id of ['Q6','Q8','Q10','Q11','Q12'])if(['partly','no','not_sure'].includes(answers[id]))answerConflicts.push({ids:['Q5',id],message:`Q5 says all four protective procedures are in place, but ${id} is ${answers[id].replace('_',' ')}. Check what is missing and whether Q5 remains Yes.`});
+  if(answers.Q8==='partly'&&answers.Q11==='yes')answerConflicts.push({ids:['Q8','Q11'],message:'Q11 indicates entry/exit control, but Q8 indicates lockdown may be slow. Confirm the difference between having barriers and activating the procedure safely.'});
+  if(answers.Q17==='yes'&&['no','not_sure'].includes(answers.Q32))answerConflicts.push({ids:['Q17','Q32'],message:'Q17 reports recent drills, while Q32 does not confirm procedure effectiveness. Clarify which procedures the drills tested.'});
+  if(answers.Q16==='yes'&&['no','not_sure'].includes(answers.Q26))answerConflicts.push({ids:['Q16','Q26'],message:'Q16 reports staff know whom to contact, while Q26 reports no simple reporting route. Clarify the distinction.'});
+  if(scope.premises.startsWith('Review required'))answerConflicts.push({ids:[],message:'Legal scope is unresolved. Review the premises use, public access and attendance answers.'});
+  const answerChecks=answerConflicts.map(x=>x.message);
+  const dutyProcedureGaps=rows.filter(r=>['Q5','Q6','Q8','Q10','Q11','Q12'].includes(r.q.id)&&r.answer!=='yes').map(r=>r.q.id);
+  return {score,rawScore,rag,earned,max,answered,unanswered,na,coverage,invalidNa,dutyProcedureGaps,total:active.length,questionBank,skippedByRouting:questionBank-active.length,
+    critical,criticalPartly,lowSections,ragReasons,answerChecks,answerConflicts,actions,rows,sections:Object.values(sections),scope,provisional:unanswered>0||!answered,
+    scoredQuestionIds:scoredIds(rows),scoringVersion:METHODOLOGY};
 }
-function defaultState(){return {version:1,screen:'welcome',index:0,business:{name:'',site:'',assessor:'',date:new Date().toISOString().slice(0,10),activity:'',building:'',excluded:'',peak:'',events:'',eventPeak:'',publicAccess:'',entryChecks:'',eventExcluded:'',accessGeneral:'',shared:'',peakMethod:'',eventLocation:'',otherResponsible:'',reviewDate:''},answers:{},notes:{}};}
-const api={computeScope,activeQuestions,summarize,defaultState};
+
+function defaultState(){return {version:1,screen:'welcome',index:0,business:{name:'',site:'',assessor:'',date:new Date().toISOString().slice(0,10),activity:'',building:'',excluded:'',peak:'',events:'',eventPeak:'',publicAccess:'',entryChecks:'',eventExcluded:'',accessGeneral:'',shared:'',peakMethod:'',eventLocation:'',otherResponsible:'',reviewDate:'',siteId:'',siteKeyId:''},answers:{},notes:{}};}
+const api={computeScope,activeQuestions,summarize,defaultState,relevantNa,isScoredCritical,NA_ALLOWED,METHODOLOGY};
 if(typeof module!=='undefined' && module.exports) module.exports=api;
 root.ReadinessLogic=api;
 })(typeof window!=='undefined'?window:globalThis);
