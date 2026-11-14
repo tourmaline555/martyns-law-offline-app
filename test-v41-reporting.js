@@ -63,6 +63,6 @@ assert.equal(short.text.split('Statuses reflect dated information at the assessm
 // Use encoded report output to avoid silently changing the 38 question IDs, weights or scoring.
 assert.equal(L.activeQuestions(Q,august.business).length,37);
 assert.equal(L.METHODOLOGY,'premivue-2026-v40-complete-coverage');
-assert.match(fs.readFileSync('index.html','utf8'),/v4\.3/);
-assert.match(fs.readFileSync('sw.js','utf8'),/ml-check-v43/);
+assert.match(fs.readFileSync('index.html','utf8'),/v4\.4/);
+assert.match(fs.readFileSync('sw.js','utf8'),/ml-check-v44/);
 console.log('PASS v4.1: dated action provenance vs unknown, historical owner/deadline safety, precise recommendations, compact output, unchanged scoring and saved IDs.');

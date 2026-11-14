@@ -1,7 +1,7 @@
 {
   "name": "Premivue | Martyn's Law Readiness & Assurance",
   "short_name": "Premivue",
-  "description": "Premivue: offline Martyn's Law readiness assessments, action tracking, audit history and PDF reports",
+  "description": "Premivue: offline Martyn's Law readiness assessments, action tracking, saved assessment history, PDF reports and tailored policy documents",
   "lang": "en-GB",
   "start_url": "./",
   "scope": "./",

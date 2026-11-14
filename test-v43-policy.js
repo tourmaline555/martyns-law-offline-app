@@ -37,7 +37,7 @@ assert.match(P.html(em),/section 7/);
  if(process.env.PREMIVUE_POLICY_DOCX)fs.writeFileSync(process.env.PREMIVUE_POLICY_DOCX,wd);
  if(process.env.PREMIVUE_POLICY_PDF)fs.writeFileSync(process.env.PREMIVUE_POLICY_PDF,pd);
  const index=fs.readFileSync('./index.html','utf8'),app=fs.readFileSync('./app.js','utf8'),sw=fs.readFileSync('./sw.js','utf8');
- assert.match(index,/v4\.3/);assert.match(sw,/ml-check-v43-policy/);
+ assert.match(index,/v4\.4/);assert.match(sw,/ml-check-v44-customer-copy/);
  assert.match(app,/Generate tailored policy/);assert.match(app,/startPolicy\(true\)/);
  assert.match(app,/policyWord/);assert.match(app,/policyPdf/);
  assert.match(app,/policyContext/);

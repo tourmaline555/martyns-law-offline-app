@@ -40,6 +40,6 @@ const a=Audit.snapshot(sampleState,s);
 assert.equal(a.format,'ml-record-v2');assert.equal(a.result.rag,'Red');assert.equal(a.siteKey,'demo community venue|north hall');
 sampleState.business.name='Altered after snapshot';assert.equal(a.business.name,'Demo Community Venue');
 assert.equal(Audit.trend([a])[0].score,0);
-const doc=Policy.generate({business:{name:'A & B <test>',site:'Hall'}},s);
-assert.ok(doc.includes('Public Protection Procedures'));assert.ok(doc.includes('DRAFT ONLY'));assert.ok(doc.includes('A &amp; B &lt;test&gt;'));assert.ok(!doc.includes('<test>'));
+const doc=Policy.generate({business:{name:'A & B <test>',site:'Hall'}},s,{});
+assert.ok(doc.includes('Public Protection Policy'));assert.ok(doc.includes('DRAFT'));assert.ok(doc.includes('A &amp; B &lt;test&gt;'));assert.ok(!doc.includes('<test>'));
 console.log('PASS: audit snapshot isolation, trends and HTML policy escaping.');
