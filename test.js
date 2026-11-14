@@ -26,7 +26,7 @@ const applicable=L.activeQuestions(Q,b);const answers=Object.fromEntries(applica
 let s=L.summarize(Q,b,answers);assert.equal(s.score,100);assert.equal(s.rag,'Green');
 answers['Q5']='no';s=L.summarize(Q,b,answers);assert.equal(s.rag,'Amber');assert.equal(s.critical.length,1);
 answers['Q5']='not_sure';s=L.summarize(Q,b,answers);assert.equal(s.rag,'Amber');
-answers['Q5']='yes';delete answers['Q12'];s=L.summarize(Q,b,answers);assert.equal(s.rag,'Amber');assert.equal(s.provisional,true);
+answers['Q5']='yes';delete answers['Q12'];s=L.summarize(Q,b,answers);assert.equal(s.rag,'Unrated');assert.equal(s.score,null);assert.equal(s.provisional,true);
 answers['Q12']='no'; for(const q of applicable) answers[q.id]='no';s=L.summarize(Q,b,answers);assert.equal(s.rag,'Red');assert.equal(s.score,0);
 const state=L.defaultState();state.business={...b,date:'2026-11-13'};state.answers=answers;state.notes={'Q5':'Test note: see log.'};
 const pdf=Pdf.generate(state,s);

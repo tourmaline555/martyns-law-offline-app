@@ -1,6 +1,6 @@
 /* Offline asset cache. No requests are made to any server by application code. */
-const CACHE = 'ml-check-v39-reliability-20261114';
-const ASSETS = ['./','./index.html','./styles.css','./questions.js','./logic.js','./basis.js','./pdf.js','./audit.js','./secure.js','./policy.js','./actions.js','./app.js','./manifest.webmanifest','./assets/icon.svg','./assets/favicon.svg','./assets/icon-192.png','./assets/icon-512.png'];
+const CACHE = 'ml-check-v40-audit-integrity-20261114';
+const ASSETS = ['./','./index.html','./styles.css','./questions.js','./logic.js','./basis.js','./pdf.js','./integrity.js','./audit.js','./secure.js','./policy.js','./actions.js','./app.js','./manifest.webmanifest','./assets/icon.svg','./assets/favicon.svg','./assets/icon-192.png','./assets/icon-512.png'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(x => x.startsWith('ml-check-') && x !== CACHE).map(x => caches.delete(x)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', event => {

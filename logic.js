@@ -7,7 +7,7 @@ const PRIORITY = {Immediate:0,High:1,Medium:2,Low:3,Maintain:4};
 // Only these advisory checks can reasonably be inapplicable without removing a statutory-linked control.
 // The assessor must still give a meaningful reason; routing makes other irrelevant items disappear.
 const NA_ALLOWED = new Set(['Q22','Q23','Q37']);
-const METHODOLOGY='premivue-2026-v39-coverage-and-tier';
+const METHODOLOGY='premivue-2026-v40-complete-coverage';
 function isEnhanced(scope){return scope.premises==='Enhanced tier'||scope.event==='Potential qualifying event (enhanced duties)';}
 function isScoredCritical(q,scope){return q.critical==='Y' && q.id!=='Q35';}
 function relevantNa(q,b,notes){return NA_ALLOWED.has(q.id)&&typeof notes?.[q.id]==='string'&&notes[q.id].trim().length>=15;}
@@ -109,11 +109,11 @@ function summarize(questions,b,answers,notes={}){
   const rawScore=max?Math.round(10000*earned/max)/100:null;
   const coverage=active.length?Math.round((answered+na)/active.length*10000)/100:0;
   // Do not display a deceptively perfect score from a very small number of answered questions.
-  const score=coverage<80?null:rawScore;
+  const score=unanswered>0||coverage<100?null:rawScore;
   let rag=score===null?'Unrated':score>=75?'Green':score>=50?'Amber':'Red';
   const lowSections=Object.values(sections).filter(x=>x.answered>=2&&x.max>0&&x.earned/x.max<.25).map(x=>x.name);
   const ragReasons=[];
-  if(coverage<80)ragReasons.push('Insufficient coverage to rate: '+coverage+'% of applicable questions have valid answers (minimum 80% for a provisional score).');
+  if(unanswered||coverage<100)ragReasons.push('Complete all applicable questions or provide valid N/A reasons to receive a final readiness rating. '+answered+' of '+active.length+' scored.');
   if(rag==='Green'){
     if(critical.length)ragReasons.push('Critical procedure answered No / Not sure: '+critical.map(q=>q.id).join(', '));
     if(criticalPartly.length)ragReasons.push('Critical procedure partly in place: '+criticalPartly.map(q=>q.id).join(', '));

@@ -13,6 +13,7 @@
   <script defer src="logic.js"></script>
   <script defer src="basis.js"></script>
   <script defer src="pdf.js"></script>
+  <script defer src="integrity.js"></script>
   <script defer src="audit.js"></script>
   <script defer src="secure.js"></script>
   <script defer src="policy.js"></script>
@@ -27,13 +28,13 @@
     </div>
   </header>
   <main id="app" class="main" aria-live="polite"></main>
-  <footer class="footer"><span>Premivue · Independent assessment · Not government endorsed</span><span>v3.9 · Reliability fixes · 14 Nov 2026</span></footer>
+  <footer class="footer"><span>Premivue · Independent assessment · Not government endorsed</span><span>v4.0 · Record integrity · 14 Nov 2026</span></footer>
   <noscript><p class="main">This app needs JavaScript enabled. It does not need an internet connection once installed or served locally.</p></noscript>
   <script>
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      const marker = 'martyns-app-sw-v3.9-refreshed';
+      const marker = 'martyns-app-sw-v4.0-refreshed';
       if (!sessionStorage.getItem(marker)) { sessionStorage.setItem(marker, '1'); window.location.reload(); }
     });
   }

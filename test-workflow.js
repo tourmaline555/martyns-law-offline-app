@@ -13,7 +13,7 @@ const draft={...L.defaultState(),screen:'results',business,answers,notes:{Q5:'Ex
 mem.set('martyns-law-readiness-v1',JSON.stringify(draft));
 const page={innerHTML:''};
 const document={getElementById(id){return id==='app'?page:null;},querySelectorAll(){return [];}};
-const window={ASSESSMENT_QUESTIONS:questions,ReadinessLogic:L,scrollTo(){},AuditStore:{...Audit,put:async r=>{records.push(JSON.parse(JSON.stringify(r)));},list:async()=>records},ActionStore:{siteKey:Audit.siteKey,stats:()=>({active:0,overdue:0,completed:0}),syncRecord:async()=>({created:1,reopened:0}),reconcile:async()=>{},list:async()=>[],events:async()=>[]}};
+const window={PremivueIntegrity:require('./integrity.js'),ASSESSMENT_QUESTIONS:questions,ReadinessLogic:L,scrollTo(){},AuditStore:{...Audit,put:async r=>{records.push(JSON.parse(JSON.stringify(r)));},list:async()=>records,listConflicts:async()=>[]},ActionStore:{siteKey:Audit.siteKey,stats:()=>({active:0,overdue:0,completed:0}),syncRecord:async()=>({created:1,reopened:0}),reconcile:async()=>{},list:async()=>[],events:async()=>[]}};
 const context={window,document,localStorage:{getItem:k=>mem.get(k)||null,setItem:(k,v)=>mem.set(k,v)},console,confirm:()=>true,alert:()=>{},navigator:{},URL,Blob,File:globalThis.File,FileReader:class {},setTimeout};
 const app=fs.readFileSync(__dirname+'/app.js','utf8');
 assert.ok(app.endsWith('})();\n'));

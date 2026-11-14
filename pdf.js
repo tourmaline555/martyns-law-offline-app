@@ -4,20 +4,37 @@
 const W=595.28,H=841.89,M=43,RIGHT=W-M;
 const INK=[0.094,0.169,0.243],MUTED=[0.376,0.455,0.529],NAVY=[0.063,0.137,0.231],TEAL=[0.086,0.647,0.545],MINT=[0.392,0.878,0.788];
 const RAG={Green:[0.14,0.48,0.30],Amber:[0.65,0.39,0.09],Red:[0.70,0.21,0.17],Unrated:[0.40,0.45,0.49]};
-function safe(t){return String(t??'').replace(/[\u2018\u2019]/g,"'").replace(/[\u201c\u201d]/g,'"').replace(/[\u2010-\u2015]/g,'-').replace(/\u2026/g,'...').replace(/\u00a3/g,'GBP ').replace(/\u00a0/g,' ').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7E]/g,'?');}
+// WinAnsi font encoding handles Western European accents accurately. For other scripts,
+// rasterize only the affected line using the device's own fonts when Canvas is available.
+const special={0x20ac:0x80,0x201a:0x82,0x0192:0x83,0x201e:0x84,0x2026:0x85,0x2020:0x86,0x2021:0x87,0x02c6:0x88,0x2030:0x89,0x0160:0x8a,0x2039:0x8b,0x0152:0x8c,0x017d:0x8e,0x2018:0x91,0x2019:0x92,0x201c:0x93,0x201d:0x94,0x2022:0x95,0x2013:0x96,0x2014:0x97,0x02dc:0x98,0x2122:0x99,0x0161:0x9a,0x203a:0x9b,0x0153:0x9c,0x017e:0x9e,0x0178:0x9f};
+function canWinAnsi(t){return [...String(t??'')].every(c=>{const x=c.codePointAt(0);return (x>=32&&x<=126)||(x>=160&&x<=255)||special[x]!==undefined||c==='\n'||c==='\t';});}
+function safe(t){return [...String(t??'')].map(c=>{const x=c.codePointAt(0);if(c==='\n'||c==='\t')return ' ';if(x>=32&&x<=126||x>=160&&x<=255)return c;if(special[x]!==undefined)return String.fromCharCode(special[x]);return '?';}).join('');}
 function pdfLiteral(s){return '('+safe(s).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)')+')';}
 const FONT_WIDTHS={regular:[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584],bold:[278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584]};
 function estimate(s,size,bold=false){const w=FONT_WIDTHS[bold?'bold':'regular'];let n=0;for(const c of s){const code=c.charCodeAt(0)-32;n+=code>=0&&code<95?w[code]:600;}return n*size/1000;}
-function wrap(text,width,size,bold=false){const lines=[];for(const paragraph of safe(text).split(/\r?\n/)){if(!paragraph.trim()){lines.push('');continue;}let line='';for(let word of paragraph.split(/\s+/)){if(!word)continue;while(word && estimate(word,size,bold)>width){let n=Math.max(1,Math.floor(width/(size*.55)));while(n>1&&estimate(word.slice(0,n),size,bold)>width)n--;if(line){lines.push(line);line='';}lines.push(word.slice(0,n));word=word.slice(n);}if(!word)continue;const test=line?line+' '+word:word;if(estimate(test,size,bold)<=width)line=test;else{lines.push(line);line=word;}}if(line)lines.push(line);}return lines;}
+function wrap(text,width,size,bold=false){const lines=[];for(const paragraph of String(text??'').split(/\r?\n/)){if(!paragraph.trim()){lines.push('');continue;}let line='';for(let word of paragraph.split(/\s+/)){if(!word)continue;while(word && estimate(word,size,bold)>width){let n=Math.max(1,Math.floor(width/(size*.55)));while(n>1&&estimate(word.slice(0,n),size,bold)>width)n--;if(line){lines.push(line);line='';}lines.push(word.slice(0,n));word=word.slice(n);}if(!word)continue;const test=line?line+' '+word:word;if(estimate(test,size,bold)<=width)line=test;else{lines.push(line);line=word;}}if(line)lines.push(line);}return lines;}
 function bytes(s){const arr=new Uint8Array(s.length);for(let i=0;i<s.length;i++)arr[i]=s.charCodeAt(i)&255;return arr;}
 class Pdf {
- constructor(){this.pages=[];this.newPage();}
+ constructor(){this.pages=[];this.images=[];this.newPage();}
  fmt(n){return Number(n).toFixed(2).replace(/\.00$/,'');}
  color(v){return v.map(x=>this.fmt(x)).join(' ');}
  rect(x,y,w,h,fill){this.out(`${this.color(fill)} rg ${this.fmt(x)} ${this.fmt(y)} ${this.fmt(w)} ${this.fmt(h)} re f\n`);}
  rule(x,y,w,color=[.85,.89,.91]){this.out(`${this.color(color)} RG .6 w ${this.fmt(x)} ${this.fmt(y)} m ${this.fmt(x+w)} ${this.fmt(y)} l S\n`);}
  out(cmd){this.page.commands+=cmd;}
- at(text,x,y,size=10,bold=false,color=INK){this.out(`${this.color(color)} rg BT /${bold?'F2':'F1'} ${this.fmt(size)} Tf 1 0 0 1 ${this.fmt(x)} ${this.fmt(y)} Tm ${pdfLiteral(text)} Tj ET\n`);}
+ at(text,x,y,size=10,bold=false,color=INK){if(!canWinAnsi(text)&&typeof document!=='undefined') {if(this.drawUnicode(text,x,y,size,bold,color))return;}this.out(`${this.color(color)} rg BT /${bold?'F2':'F1'} ${this.fmt(size)} Tf 1 0 0 1 ${this.fmt(x)} ${this.fmt(y)} Tm ${pdfLiteral(text)} Tj ET\n`);}
+ drawUnicode(text,x,y,size,bold,color){
+  try{
+   const canvas=document.createElement('canvas');const ctx=canvas.getContext('2d');if(!ctx)return false;
+   const factor=2.5, fontSize=Math.max(12,Math.round(size*factor));ctx.font=`${bold?'700':'400'} ${fontSize}px sans-serif`;
+   const width=Math.min(2500,Math.ceil(ctx.measureText(String(text)).width)+12),height=Math.ceil(fontSize*1.6);
+   canvas.width=width;canvas.height=height;ctx.fillStyle='white';ctx.fillRect(0,0,width,height);
+   ctx.font=`${bold?'700':'400'} ${fontSize}px sans-serif`;ctx.fillStyle=`rgb(${color.map(c=>Math.round(c*255)).join(',')})`;ctx.textBaseline='alphabetic';ctx.fillText(String(text),4,fontSize*1.17);
+   const jpg=canvas.toDataURL('image/jpeg',.94).split(',')[1],bin=typeof atob==='function'?atob(jpg):Buffer.from(jpg,'base64').toString('binary');
+   const name='Im'+(this.images.length+1),pw=width/factor,ph=height/factor;
+   this.images.push({name,width,height,bin,page:this.page.n});
+   this.out(`q ${this.fmt(pw)} 0 0 ${this.fmt(ph)} ${this.fmt(x-1)} ${this.fmt(y-fontSize*.4/factor)} cm /${name} Do Q\n`);return true;
+  }catch(e){return false;}
+ }
  brandShield(x,top,s=1){
    // The same rounded shield/check symbol as the Premivue website, translated to PDF vector paths.
    const px=n=>this.fmt(x+n*s), py=n=>this.fmt(top-n*s);
@@ -56,8 +73,9 @@ class Pdf {
   const objects=[];
   function add(s){objects.push(s);return objects.length;}
   const catalog=add(''),pages=add(''),regular=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'),bold=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  const imrefs={};for(const im of this.images){imrefs[im.name]=add(`<< /Type /XObject /Subtype /Image /Width ${im.width} /Height ${im.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes(im.bin).length} >>\nstream\n${im.bin}\nendstream`);}
   const refs=[];
-  for(const p of this.pages){const content=add(`<< /Length ${bytes(p.commands).length} >>\nstream\n${p.commands}endstream`);const page=add(`<< /Type /Page /Parent ${pages} 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 ${regular} 0 R /F2 ${bold} 0 R >> >> /Contents ${content} 0 R >>`);refs.push(`${page} 0 R`);}
+  for(const p of this.pages){const resources=this.images.filter(im=>im.page===p.n).map(im=>`/${im.name} ${imrefs[im.name]} 0 R`).join(' ');const content=add(`<< /Length ${bytes(p.commands).length} >>\nstream\n${p.commands}endstream`);const page=add(`<< /Type /Page /Parent ${pages} 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 ${regular} 0 R /F2 ${bold} 0 R >> /XObject << ${resources} >> >> /Contents ${content} 0 R >>`);refs.push(`${page} 0 R`);}
   objects[catalog-1]=`<< /Type /Catalog /Pages ${pages} 0 R >>`;
   objects[pages-1]=`<< /Type /Pages /Count ${this.pages.length} /Kids [${refs.join(' ')}] >>`;
   let all='%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';const offsets=[0];
@@ -79,6 +97,7 @@ function nextPage(p,title){p.newPage();p.title(title);}
 function readableScopeStatus(s){return (s||'Review required').replace(' - conflicting scope answers',' - check answers');}
 function generate(state,result,tracker=[],options={}){
  const p=new Pdf(),r=result||{},b=state.business||{},detailed=!!options.detailed;
+ const historical=!!options.historical, generatedAt=options.generatedAt||new Date().toISOString(),I=root.PremivueIntegrity;
  const sc=r.scope||{premises:'Review required',event:'Review required',reasons:[],scopeUnknown:true};
  const actions=Array.isArray(r.actions)?r.actions:[];
  const sections=Array.isArray(r.sections)?r.sections:[];
@@ -92,7 +111,10 @@ function generate(state,result,tracker=[],options={}){
  p.title('Assessment summary');
  p.lineText(title,{size:14,bold:true,after:2});
  p.lineText(`${b.site||'Site not recorded'}  |  Assessed ${b.date||'Date not recorded'}`,{size:9,color:MUTED,after:2});
- p.lineText(`Assessor: ${b.assessor||'Not supplied'}   |   ${status}`,{size:8.4,color:MUTED,after:4});
+ p.lineText(`Assessor: ${b.assessor||'Not supplied'}   |   ${status}`,{size:8.4,color:MUTED,after:3});
+ p.lineText(`Report generated: ${generatedAt.slice(0,10)}   |   Assessment: ${b.date||'Not recorded'}   |   Scoring: ${r.scoringVersion||'legacy'}`,{size:8.0,color:MUTED,after:3});
+ if(state._audit?.importValidation==='legacy')p.lineText('LEGACY / UNVERIFIED IMPORT: recorded score not independently recalculated.',{size:8.6,color:RAG.Amber,bold:true,after:4});
+ if(b.date&&generatedAt.slice(0,10)>b.date)p.lineText('Retrospective report: guidance references reflect report generation, not necessarily the assessment date.',{size:8.3,color:MUTED,after:3});
  if(state._audit?.id)p.lineText(`Audit reference: ${state._audit.id}`,{size:8.4,color:MUTED,after:4});
  if(r.provisional)p.lineText('PROVISIONAL: unanswered questions or unjustified N/A answers; check completeness before relying on this score.',{size:8.6,bold:true,color:RAG.Amber,after:3});
  p.gap(7);
@@ -108,13 +130,14 @@ function generate(state,result,tracker=[],options={}){
  p.at(prem[0]||'',statusX,p.y-9,9.1,true,scopeColour);
  p.at(evt[0]||'',statusX,p.y-29,8.7,false,INK);
  p.y-=66;
+ p.lineText('Duty tier is indicative. Confirm whether statutory duties were in force on the assessment date before treating them as obligations.',{size:8,color:MUTED,leading:11,after:2});
  if(scopeReview){
    p.lineText('SCOPE NEEDS REVIEW BEFORE RELYING ON ANY LEGAL TIER',{size:9.5,bold:true,color:RAG.Red,after:3});
    if((sc.reasons||[]).length)p.lineText('Check: '+sc.reasons[0],{size:8.6,color:INK,leading:12,after:4});
  }
  p.gap(6);
  p.subtitle('02  Readiness score');
- const rag=r.rag||'Unrated',score=pct(r.score),c=RAG[rag]||MUTED;
+ const rag=r.provisional?'Unrated':(r.rag||'Unrated'),score=pct(r.provisional?null:r.score),c=RAG[rag]||MUTED;
  p.rect(M,p.y-58,RIGHT-M,65,[.95,.97,.98]);p.rect(M,p.y-58,4,65,c);
  p.at(rag.toUpperCase(),M+18,p.y-15,16,true,c);p.at(score,RIGHT-110,p.y-24,27,true,NAVY);
  p.at(`${r.answered||0} of ${r.total||0} applicable questions  |  ${r.skippedByRouting||0} routed out  |  ${r.unanswered||0} unanswered`,M+18,p.y-41,8.6,false,MUTED);
@@ -124,15 +147,16 @@ function generate(state,result,tracker=[],options={}){
  if(reasons.length)p.lineText('Rating limited by: '+reasons.join('; '),{size:8.7,bold:true,color:RAG.Amber,after:4});
  p.lineText(`${(r.dutyProcedureGaps||[]).length} section 5 procedure checks need confirmation (separate from advisory controls).`,{size:8.5,after:4});
  p.gap(5);
- p.subtitle('03  Immediate management attention');
+ p.subtitle('03  Top priorities for management review');
  if(actions.length){
-  const ordered=actions.slice().sort((a,z)=>Number(z.q?.critical==='Y')-Number(a.q?.critical==='Y'));
+  const ordered=actions.slice(); // summarize already orders by effective tier-specific urgency, not source critical flag
   for(const a of ordered.slice(0,3)){
     const text=`${a.q.id}  ${a.q.section}: ${a.finding}`;
     p.lineText(text,{size:9.1,after:4,leading:13});
   }
  }else p.lineText('No improvement actions were generated. Review the reliability of the answers.',{size:9.1});
  if((r.answerChecks||[]).length)p.lineText(`${r.answerChecks.length} answer combinations need checking. See page 2.`,{size:8.6,color:RAG.Amber,after:4});
+ if(typeof options.comparison==='number')p.lineText(`Change since previous comparable assessment: ${options.comparison>0?'+':''}${options.comparison.toFixed(1)} percentage points.`,{size:8.7,bold:true,color:TEAL,after:3});
  p.gap(8);smallRule(p);
  p.lineText('Readiness is a weighted self-assessment, not legal compliance or a prediction of an attack. Scope and duty-tier decisions must be confirmed separately. Improvement priority is not the same as a legal obligation.',{size:8.4,color:MUTED,leading:12});
  // Page two: clean section profile and concise supporting information.
@@ -162,34 +186,41 @@ function generate(state,result,tracker=[],options={}){
  p.lineText(`Events: ${b.events||'Not sure'}    Event peak: ${b.eventPeak||'Not supplied'}    Next review: ${b.reviewDate||'Not set'}`,{size:8.8,after:5});
  p.gap(5);smallRule(p);
  p.lineText('Scoring version: '+(r.scoringVersion||'historical method')+'   |   Coverage: '+(r.coverage??'Not recorded')+'%',{size:8.1,color:MUTED,leading:11.5,after:2});
- p.lineText('Scoring: Yes = 2, Partly = 1, No/Not sure = 0, multiplied by question weights. Green 75%+, Amber 50%-74.99%, Red below 50%; fewer than 80% valid answers withholds a rating; other critical, unanswered or very low-section gaps can prevent Green. This is Premivue methodology, not an official statutory standard.',{size:8.4,color:MUTED,leading:12,after:3});
- p.lineText('SIA planning tools (10 Nov 2026): standard-tier planning tool / enhanced-tier template. Premivue does not complete or submit these official documents.',{size:8.0,color:MUTED,leading:11,after:3});
+ p.lineText('Scoring: Yes = 2, Partly = 1, No/Not sure = 0, multiplied by question weights. Green 75%+, Amber 50%-74.99%, Red below 50%; any unanswered or unjustified N/A item withholds a rating; critical or very low-section gaps may prevent Green. This is Premivue methodology, not an official statutory standard.',{size:8.4,color:MUTED,leading:12,after:3});
+ p.lineText(`Regulatory references are current to report generation (${generatedAt.slice(0,10)}), not retrospectively applicable to the assessment. SIA planning tools (10 Nov 2026): standard-tier planning tool / enhanced-tier template. Premivue does not complete or submit these official documents.`,{size:8.0,color:MUTED,leading:11,after:3});
  p.lineText('Source: Home Office, Terrorism (Protection of Premises) Act 2025 statutory guidance (updated 25 August 2026). Verify current official guidance and scope before making compliance decisions.',{size:8.2,color:MUTED,leading:11.5,after:3});
  // Clear and succinct full action plan, not repeated in full question record.
  nextPage(p,'Prioritised action plan');
  p.lineText('Each action shows its readiness priority and legal/advisory basis. Validate applicability and record responsibility in the action tracker.',{size:9,color:MUTED,after:13});
  const mapTracker=new Map((Array.isArray(tracker)?tracker:[]).map(a=>[a.questionId,a]));
  if(!actions.length)p.lineText('No actions generated from the recorded answers.',{size:9.5});
- for(const a of actions){
+ for(const a of (detailed?actions:actions.slice(0,8))){
    const basis=B?.classify?.(a.q.id,sc,b)||{label:'Preparedness',reference:''};
    const tr=mapTracker.get(a.q.id);
    const headline=`${a.q.id}  /  ${a.q.section}   -   ${a.priority.toUpperCase()}${(r.critical||[]).some(q=>q.id===a.q.id)||(r.criticalPartly||[]).some(q=>q.id===a.q.id)?'   /   CRITICAL':''}`;
    const recommendation=a.action||'Review the identified gap.';
-   const label=`${basis.label}${tr?'   |   '+tr.status:''}`;
-   const add=`${tr?'Owner: '+(tr.owner||'Unassigned')+'   |   Due: '+(tr.dueDate||'Not set'):''}`;
-   const h=31+lineCount(recommendation,RIGHT-M-12,9.15,false)*13+lineCount(label,RIGHT-M-12,8.3,false)*11+(add?18:0);
+   const historicalStatus=historical&&tr&&I?.stateAt?I.stateAt(tr,options.actionEvents||[],b.date):null;
+   const label=`${basis.label}${tr?'   |   '+(historicalStatus?historicalStatus.status:tr.status):''}`;
+   const add=tr?(historical?
+     `Action status at assessment: ${historicalStatus?.status||'Unverified'} (${historicalStatus?.evidence||'no dated log'}).`:
+     `Current status as at ${generatedAt.slice(0,10)}: ${tr.status}; Owner: ${tr.owner||'Unassigned'}; Due: ${tr.dueDate||'Not set'}${tr.completedAt?'; Completed: '+tr.completedAt.slice(0,10):''}`):'';
+   const completedNote=tr?.status==='Completed'&&tr.note?`Closure note (current): ${tr.note}`:'';
+   const h=35+lineCount(recommendation,RIGHT-M-12,9.15,false)*13+lineCount(label,RIGHT-M-12,8.3,false)*11+(add?lineCount(add,RIGHT-M-12,8.2,false)*12:0)+(completedNote&&!historical?lineCount(completedNote,RIGHT-M-12,8,false)*12:0);
    p.ensure(Math.max(58,h-6));
    p.rule(M,p.y+12,RIGHT-M,[.85,.89,.92]);
    p.at(headline,M,p.y,9.2,true,a.priority==='Immediate'?RAG.Red:a.priority==='High'?RAG.Amber:TEAL);p.y-=15;
    p.lineText(label,{size:8.1,color:MUTED,leading:10.8,after:2});
    p.lineText(recommendation,{size:9.15,leading:12.4,after:1});
    if(add)p.lineText(add,{size:8.2,color:MUTED,after:2});
+   if(completedNote&&!historical)p.lineText(completedNote,{size:8,color:MUTED,after:2});
    p.gap(4);
  }
+ if(!detailed&&actions.length>8){p.gap(9);p.lineText(`${actions.length-8} further actions are available in the full assessment appendix and action tracker.`,{size:9,bold:true,color:TEAL,after:3});}
  // Scope and legal disclaimers are presented once in the summary and scoring page.
  // Keep question-by-question content in the optional report, with a plain compact record.
  if(detailed){
-   nextPage(p,'Appendix - all question responses');
+   if(p.y>H-290){p.gap(10);p.title('Appendix - all question responses');}
+   else nextPage(p,'Appendix - all question responses');
    p.lineText('Detailed audit appendix. Original answers and assessor notes; recommendations are listed once in the preceding action plan.',{size:9,color:MUTED,after:11});
    for(const {q,answer} of rows){
      const head=`${q.id}   ${mapAnswer[answer]||'Unanswered'}   |   ${q.section}${(r.critical||[]).some(x=>x.id===q.id)||(r.criticalPartly||[]).some(x=>x.id===q.id)?'   |   Critical':''}`;
@@ -205,9 +236,11 @@ function generate(state,result,tracker=[],options={}){
    }
    p.gap(6);
    p.subtitle('Recorded scope answers');
+   const labels={name:'Organisation',site:'Premises and address',assessor:'Assessor',date:'Assessment date',activity:'Premises use',building:'Publicly accessible building',excluded:'Premises statutory exclusion',peak:'Expected peak attendance',events:'Events/out-of-hours use',eventPeak:'Expected event attendance',publicAccess:'Event public access',entryChecks:'Event qualifying admission checks',eventExcluded:'Event exclusion',accessGeneral:'Event access arrangements',shared:'Shared premises',peakMethod:'Attendance estimate basis',eventLocation:'Event location',otherResponsible:'Other responsible persons',reviewDate:'Next review date'};
+   const translations={at_site:'At these premises',separate:'Separate location',both:'Both these premises and elsewhere',unknown:'Not sure',yes:'Yes',no:'No',partly:'Partly',not_sure:'Not sure'};
    for(const [name,val] of Object.entries(b)){
      if(!['name','site','assessor','date','activity','building','excluded','peak','events','eventPeak','publicAccess','entryChecks','eventExcluded','accessGeneral','shared','peakMethod','eventLocation','otherResponsible','reviewDate'].includes(name))continue;
-     p.lineText(`${name}: ${val||'Not entered'}`,{size:8.8,after:1,leading:12});
+     p.lineText(`${labels[name]||name}: ${translations[val]||val||'Not entered'}`,{size:8.8,after:1,leading:12});
    }
  }
  // Basic references appear once at end, no long repeated caveat page.

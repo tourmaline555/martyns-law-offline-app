@@ -11,7 +11,7 @@ class FakeDB{
   const tx={oncomplete:null,onerror:null,onabort:null,error:null,aborted:false,abort(){tx.aborted=true;later(()=>tx.onabort?.());},objectStore(n){
    const map=db.data[n];
    const schedule=work=>{active++;const req={result:null,error:null,onsuccess:null,onerror:null};later(()=>{if(tx.aborted)return;try{req.result=work();req.onsuccess?.();}catch(e){req.error=e;tx.error=e;req.onerror?.();tx.abort();}active--;finish();});return req;};
-   return {add:v=>schedule(()=>{if(map.has(v.id))throw Error('duplicate key');map.set(v.id,structuredClone(v));}),put:v=>schedule(()=>{map.set(v.id,structuredClone(v));}),get:k=>schedule(()=>map.has(k)?structuredClone(map.get(k)):undefined),openCursor(){
+   return {getAll:()=>schedule(()=>[...map.values()].map(structuredClone)),add:v=>schedule(()=>{if(map.has(v.id))throw Error('duplicate key');map.set(v.id,structuredClone(v));}),put:v=>schedule(()=>{map.set(v.id,structuredClone(v));}),get:k=>schedule(()=>map.has(k)?structuredClone(map.get(k)):undefined),openCursor(){
     active++;const values=[...map.values()].sort((a,b)=>a.id.localeCompare(b.id));let index=0;
     const req={result:null,onsuccess:null,onerror:null};
     function step(){later(()=>{if(tx.aborted)return;const value=values[index];if(value){req.result={value:structuredClone(value),update(v){map.set(v.id,structuredClone(v));},continue(){index++;step();}};req.onsuccess?.();}else{req.result=null;req.onsuccess?.();active--;finish();}});}
@@ -25,7 +25,7 @@ class FakeDB{
  close(){}
 }
 globalThis.indexedDB={open(name){const req={onsuccess:null,onerror:null,onupgradeneeded:null,result:null};later(()=>{let db=database.get(name);if(!db){db=new FakeDB();database.set(name,db);req.result=db;req.onupgradeneeded?.();}req.result=db;req.onsuccess?.();});return req;}};
-const A=require('./actions.js');
+globalThis.PremivueIntegrity=require('./integrity.js');globalThis.AuditStore=require('./audit.js');const A=require('./actions.js');
 const L=require('./logic.js');
 const vm=require('node:vm'),fs=require('node:fs');
 const ctx={window:{}};vm.runInNewContext(fs.readFileSync(__dirname+'/questions.js','utf8'),ctx);const Q=ctx.window.ASSESSMENT_QUESTIONS;
@@ -44,7 +44,7 @@ function makeRecord(id,createdAt,bad){const ans=Object.fromEntries(available.map
  const b=makeRecord('audit-2','2026-11-02T10:00:00.000Z','yes');
  const n2=await A.syncRecord(b);assert.equal(n2.cleared,1);
  rows=await A.list();assert.equal(rows[0].flagged,false);assert.equal(rows[0].status,'In progress');
- await A.update(rows[0].id,{status:'Completed'});
+ await A.update(rows[0].id,{status:'Completed',note:'Completed after staff review'});
  rows=await A.list();assert.equal(rows[0].status,'Completed');assert.ok(rows[0].completedAt);
  const c=makeRecord('audit-3','2026-11-03T10:00:00.000Z','no');
  const n3=await A.syncRecord(c);assert.equal(n3.reopened,1);

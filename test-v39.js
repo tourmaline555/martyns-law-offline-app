@@ -49,5 +49,5 @@ assert.equal(A.trend([snapshot])[0].scoredIds,r.scoredQuestionIds.join(','));
 const pdf=PDF.generate(st,r,[],{});assert.ok(pdf.length>9000);assert.equal(Buffer.from(pdf.slice(0,8)).toString('latin1'),'%PDF-1.4');
 // 9. Cached asset list includes new crypto code, and all versions are bumped.
 const sw=fs.readFileSync('./sw.js','utf8'),html=fs.readFileSync('./index.html','utf8');
-assert.match(sw,/secure\.js/);assert.match(sw,/v39/);assert.match(html,/secure\.js/);assert.match(html,/v3\.9/);
+assert.match(sw,/secure\.js/);assert.match(sw,/v40/);assert.match(html,/secure\.js/);assert.match(html,/v4\.0/);
 console.log('PASS v3.9: N/A protection, Q35 alignment, Not sure findings, event routing, stable sites, scoring provenance, PDF, offline assets.');
