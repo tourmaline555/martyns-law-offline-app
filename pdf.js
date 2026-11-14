@@ -57,29 +57,32 @@ function generate(state,result,tracker=[]){
  p.title('Preparedness assessment report');
  p.kv('Organisation:',b.name||'Not specified');p.kv('Site / location:',b.site||'Not specified');p.kv('Assessed by:',b.assessor||'Not specified');p.kv('Assessment date:',b.date||new Date().toISOString().slice(0,10));
  p.kv('Record type:',state._audit?'Saved historical snapshot':'Current assessment - not saved to audit trail');
- p.kv('Questionnaire version:',state._audit?.questionnaireVersion||'v3.4 current draft');
+ p.kv('Questionnaire version:',state._audit?.questionnaireVersion||'v3.5 current draft');
  if(state._audit){p.kv('Audit record ID:',state._audit.id);p.kv('Saved on device (UTC):',state._audit.createdAt);}
  p.gap(10);
  p.subtitle('OVERALL READINESS');
  p.lineText(`${r.rag.toUpperCase()}  |  ${r.score===null?'No score':`${Math.round(r.score)}% weighted score`}`,{bold:true,size:21,color:RAG[r.rag]||RAG.Unrated,leading:28,after:3});
- p.lineText(`${r.answered} scored / ${r.total} relevant questions; ${r.na} not applicable; ${r.unanswered} unanswered. ${r.provisional?'Provisional - unanswered questions remain.':'Assessment answers recorded.'}`,{size:9.5,after:7});
- p.lineText(`Critical overrides: ${r.critical.length}${r.critical.length?' ('+r.critical.map(q=>q.id).join(', ')+')':' (none triggered)'}. Actions recommended: ${r.actions.length}.`,{size:9.4});
+ p.lineText(`${r.answered} scored / ${r.total} applicable; ${(r.skippedByRouting??0)} skipped by routing from ${r.questionBank||38} readiness checks; scope screened separately. ${r.na} N/A, ${r.unanswered} unanswered.`,{size:9.2,after:5});
+ if(r.ragReasons?.length)p.lineText('AMBER CAP - '+r.ragReasons.join('; '),{size:9.1,bold:true,color:RAG.Amber,after:6});
+ p.lineText(`Critical No/Not sure: ${r.critical.length}; critical Partly: ${(r.criticalPartly||[]).length}; actions: ${r.actions.length}.`,{size:9.4});
  p.subtitle('PRELIMINARY SCOPE SCREEN');
- p.kv('Premises:',r.scope.premises);p.kv('Events:',r.scope.event);p.kv('Expected premises peak:',r.scope.peak===null?'Not provided':r.scope.peak+' people');
+ p.kv('Premises:',r.scope.premises);p.kv('Events:',r.scope.event);
+ if(r.scope.premises==='Not qualifying on stated information')p.lineText('Readiness score is VOLUNTARY where the Act is not in scope on stated information; this is not a legal compliance rating.',{size:8.8,color:RAG.Amber});p.kv('Expected premises peak:',r.scope.peak===null?'Not provided':r.scope.peak+' people');
  if(b.events==='yes'||b.events==='unknown')p.kv('Expected event peak:',r.scope.eventPeak===null?'Not provided':r.scope.eventPeak+' people');
  if(r.scope.special)p.lineText('Special rule: childcare, schools, further education and places of worship are generally treated as standard-tier premises even at 800+, and qualifying events at these premises are excluded.',{size:8.6,color:MUTED});
  p.lineText('Scope is indicative only. Mixed-use premises, exclusions, shared sites and events at separate locations require case-specific consideration.',{size:8.6,color:MUTED});
  for(const reason of (r.scope.reasons||[]).slice(0,4))p.lineText('Review: '+reason,{size:8.0,color:MUTED,after:2});
  p.gap(4);
- const summaryFindings=r.actions.filter(a=>(a.answer==='no'||a.answer==='not_sure')&&(a.q.summary==='Y'||a.critical));
+ const summaryFindings=r.actions.filter(a=>((a.answer==='no'||a.answer==='not_sure')&&a.q.summary==='Y')||a.q.critical==='Y');
  p.subtitle('EXECUTIVE HIGHLIGHTS');
  if(summaryFindings.length){for(const a of summaryFindings.slice(0,6))p.lineText(`${a.q.id}: ${a.finding}`,{size:8.9,after:4});if(summaryFindings.length>6)p.lineText(`${summaryFindings.length-6} further key findings are detailed in the action plan.`,{size:8.8,color:MUTED});}
  else p.lineText('No key-summary finding was triggered by the recorded answers. Review the full record and evidence.',{size:8.9});
  p.gap(2);
+ if(r.answerChecks?.length){p.subtitle('ANSWERS TO DOUBLE-CHECK');for(const message of r.answerChecks)p.lineText(message,{size:8.7,color:RAG.Amber,after:3});}
+ p.newPage();
  p.subtitle('SCORES BY SECTION');
  for(const s of r.sections) p.bar(`${s.name}  (${s.answered} scored, ${s.unanswered} unanswered)`,s.max?s.earned/s.max*100:null);
  p.gap(2);
- p.newPage();
  p.title('Visual readiness summary');
  const priorityLabels=['Immediate','High','Medium','Low'];
  const priorityColors=[[.72,.23,.19],[.80,.47,.17],[.91,.66,.23],[.20,.49,.51]];
@@ -103,7 +106,7 @@ function generate(state,result,tracker=[]){
  for(const n of B.overview(r.scope))p.lineText('- '+n,{size:8.8,after:4});
  p.gap(4);
  p.title('Priority action plan');
- p.lineText('Actions are ordered Immediate, High, Medium and Low. Answers of "Not sure" use the same conservative action/priority as "No". Check each proposed action for practicality and relevance before implementing.',{size:9.2,after:10});
+ p.lineText('Priorities describe preparedness urgency, not legal enforceability. Answering Not sure uses No priority. Check action appropriateness and legal scope before implementing.',{size:9.2,after:10});
  if(!r.actions.length)p.lineText('No scored responses currently produce improvement actions. Check whether the questionnaire is complete and whether responses are supported by evidence.');
  for(const a of r.actions){
    // Keep the question, finding and recommendation together where practicable.
@@ -112,6 +115,7 @@ function generate(state,result,tracker=[]){
    p.lineText(a.q.text,{size:10,bold:true,after:3});
    const basis=B.classify(a.q.id,r.scope,b);p.lineText('Basis: '+basis.label+'  |  '+basis.reference,{size:8.3,color:MUTED,after:3});
    p.lineText(`Finding: ${a.finding}`,{size:9,after:2});
+   if(a.q.critical==='Y'&&a.answer==='partly')p.lineText('Critical safeguard partly effective - review promptly.',{size:8.8,color:RAG.Amber,bold:true,after:2});
    p.lineText(`Recommended action: ${a.action}`,{size:9.3,bold:true,after:2});
    const note=state.notes?.[a.q.id];if(note)p.lineText(`Assessor note: ${note}`,{size:8.6,after:2});
    p.gap(7);
@@ -178,7 +182,7 @@ function generate(state,result,tracker=[]){
  p.gap(11);
  p.lineText('SCORING', {size:10,bold:true,color:TEAL});
  p.lineText('Yes = 2; Partly = 1; No or Not sure = 0. Weighted % = sum(answer score x weight) / sum(2 x weight) for answered, applicable questions. Not applicable and unanswered questions are excluded from the denominator. Green >=75%; Amber 50% to less than 75%; Red below 50%.', {size:9});
- p.lineText('If any critical override question is No or Not sure, overall cannot be Green. Incomplete assessments cannot be Green. S1-S12 are not included in readiness scoring. These RAG bands and overrides come from the supplied spreadsheet, not the Act.',{size:9});
+ p.lineText(r.scoringVersion==='matrix-2026-v2-safeguards'?'App guardrails: a critical Partly/No/Not sure, incomplete assessment or a scored section below 25% can cap Green at Amber. Weights and numeric score are unchanged. This is NOT an official statutory scoring method.':'Legacy scoring: critical No/Not sure or incomplete assessment capped Green at Amber. This historical score has not been recalculated.',{size:9});
  p.gap(5);
  p.lineText('OFFICIAL REFERENCES (available online when connected)',{size:10,bold:true,color:TEAL});
  p.lineText('Home Office statutory guidance, updated 25 August 2026:',{size:9,after:2});

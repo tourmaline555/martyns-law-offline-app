@@ -26,13 +26,13 @@
     </div>
   </header>
   <main id="app" class="main" aria-live="polite"></main>
-  <footer class="footer"><span>Independent self-assessment · Not an official government assessment</span><span>v3.4 · Scope and tier-specific advice · 14 Nov 2026</span></footer>
+  <footer class="footer"><span>Independent self-assessment · Not an official government assessment</span><span>v3.5 · Safeguard checks · 14 Nov 2026</span></footer>
   <noscript><p class="main">This app needs JavaScript enabled. It does not need an internet connection once installed or served locally.</p></noscript>
   <script>
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      const marker = 'martyns-app-sw-v3.4-refreshed';
+      const marker = 'martyns-app-sw-v3.5-refreshed';
       if (!sessionStorage.getItem(marker)) { sessionStorage.setItem(marker, '1'); window.location.reload(); }
     });
   }

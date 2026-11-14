@@ -28,5 +28,5 @@ const b=L.defaultState().business;Object.assign(b,{name:'Example Venue',events:'
 const ans=Object.fromEntries(L.activeQuestions(Q,b).map(q=>[q.id,'yes']));
 const before=L.summarize(Q,b,ans);assert.equal(before.rag,'Green');assert.equal(before.score,100);
 ans.Q5='no';const after=L.summarize(Q,b,ans);assert.equal(after.rag,'Amber');assert.equal(after.critical.length,1);
-const audit=require('./audit.js');const snap=audit.snapshot({business:b,answers:ans,notes:{}},after);assert.equal(snap.result.actions[0].q.id,'Q5');assert.equal(snap.result.actions[0].q.text,by('Q5').text);assert.equal(snap.questionnaireVersion,'v3.4-scope-tier-2026-11-14');
+const audit=require('./audit.js');const snap=audit.snapshot({business:b,answers:ans,notes:{}},after);assert.equal(snap.result.actions[0].q.id,'Q5');assert.equal(snap.result.actions[0].q.text,by('Q5').text);assert.equal(snap.questionnaireVersion,'v3.5-guardrails-2026-11-14');
 console.log('PASS: targeted guidance wording; unchanged question counts, critical flags, weights, RAG and archive snapshot.');

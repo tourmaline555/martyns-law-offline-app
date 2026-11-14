@@ -1,4 +1,4 @@
-# Premivue readiness prototype — v3.4
+# Premivue readiness prototype — v3.5
 
 ## Scope and tier-specific recommendations
 
@@ -39,3 +39,12 @@ for f in test.js test-guidance.js test-basis.js test-actions.js test-workflow.js
 - [Home Office statutory guidance](https://www.gov.uk/government/publications/the-terrorism-protection-of-premises-act-2025/terrorism-protection-of-premises-act-2025-statutory-guidance), last updated 25 August 2026.
 
 This independent self-assessment is not an official SIA assessment or legal certificate.
+
+
+## v3.5 safety-first score review
+
+- Keeps all 38 readiness checks, original weights and action priorities.
+- Displays routed question counts; does not treat S1-S12 as scored.
+- A critical Partly answer prevents Green. A topic below 25% (with at least two scored items) also prevents Green. No change to the numeric weighted percentage.
+- RAG reasons are explained on screen and in the PDF; legacy archived ratings are preserved and marked as legacy.
+- Priority labels describe preparedness urgency, not legal requirement.

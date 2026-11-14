@@ -46,7 +46,7 @@ function activeQuestions(questions,b){return questions.filter(q=>q.section!=='Sc
 function summarize(questions,b,answers){
   const active=activeQuestions(questions,b), sections={};
   let max=0,earned=0,answered=0,na=0,unanswered=0;
-  const critical=[]; const actions=[]; const rows=[];
+  const critical=[]; const criticalPartly=[]; const actions=[]; const rows=[];
   for(const q of active){
     if(!sections[q.section])sections[q.section]={name:q.section,earned:0,max:0,answered:0,unanswered:0,na:0};
     const sec=sections[q.section], answer=answers[q.id];
@@ -57,6 +57,7 @@ function summarize(questions,b,answers){
     sec.earned+=SCORE[answer]*w;sec.max+=2*w;sec.answered++;
     const triggered=q.critical==='Y' && (answer==='no'||answer==='not_sure');
     if(triggered) critical.push(q);
+    if(q.critical==='Y' && answer==='partly') criticalPartly.push(q);
     if(answer==='no'||answer==='not_sure'||answer==='partly'){
       const negative=answer!=='partly';
       actions.push({q,answer,priority:negative?q.priorityNo:q.priorityPartly,action:negative?q.actionNo:q.actionPartly,finding:negative?q.findingNo:q.findingPartly,critical:triggered});
@@ -70,9 +71,24 @@ function summarize(questions,b,answers){
   if(basis?.recommendation)for(const a of actions){a.action=basis.recommendation(a.q.id,a.answer,scope,b,a.action);}
   const score = max ? Math.round(10000*earned/max)/100 : null;
   let rag=score===null?'Unrated':score>=75?'Green':score>=50?'Amber':'Red';
-  if(rag==='Green' && (critical.length>0||unanswered>0)) rag='Amber';
+  // Safeguard guardrails cap GREEN at AMBER; they never inflate or reweight the score.
+  // This is an explicit app methodology, NOT a scoring rule prescribed by the Act.
+  const lowSections=Object.values(sections).filter(s=>s.answered>=2 && s.max>0 && s.earned/s.max<0.25).map(s=>s.name);
+  const ragReasons=[];
+  if(rag==='Green'){
+    if(critical.length)ragReasons.push('Critical safeguard answered No / Not sure: '+critical.map(q=>q.id).join(', '));
+    if(criticalPartly.length)ragReasons.push('Critical safeguard only partly in place: '+criticalPartly.map(q=>q.id).join(', '));
+    if(unanswered)ragReasons.push('Unanswered applicable readiness questions: '+unanswered);
+    if(lowSections.length)ragReasons.push('Severe section gap (below 25%): '+lowSections.join(', '));
+    if(ragReasons.length)rag='Amber';
+  }
   actions.sort((a,b)=>(PRIORITY[a.priority]??5)-(PRIORITY[b.priority]??5) || (Number(b.q.weight)||0)-(Number(a.q.weight)||0) || a.q.id.localeCompare(b.q.id,undefined,{numeric:true}));
-  return {score,rag,earned,max,answered,unanswered,na,total:active.length,critical,actions,rows,sections:Object.values(sections),scope,provisional:unanswered>0};
+  const questionBank=questions.filter(q=>q.section!=='Scope').length;
+  // Potentially conflicting interpretations; invite review without altering the score.
+  const answerChecks=[];
+  if(answers.Q17==='yes' && ['no','not_sure'].includes(answers.Q32))answerChecks.push('Q17 says evacuation/lockdown drills were carried out, but Q32 says procedure effectiveness was not checked. Confirm what was actually tested.');
+  if(answers.Q16==='yes' && ['no','not_sure'].includes(answers.Q26))answerChecks.push('Q16 says staff know how to report concerns, but Q26 indicates no simple reporting route for suspicious activity. Clarify the difference.');
+  return {score,rag,earned,max,answered,unanswered,na,total:active.length,questionBank,skippedByRouting:questionBank-active.length,critical,criticalPartly,lowSections,ragReasons,answerChecks,actions,rows,sections:Object.values(sections),scope,provisional:unanswered>0,scoringVersion:'matrix-2026-v2-safeguards'};
 }
 function defaultState(){return {version:1,screen:'welcome',index:0,business:{name:'',site:'',assessor:'',date:new Date().toISOString().slice(0,10),activity:'',building:'',excluded:'',peak:'',events:'',eventPeak:'',publicAccess:'',entryChecks:'',eventExcluded:'',accessGeneral:'',shared:'',peakMethod:'',eventLocation:'',otherResponsible:'',reviewDate:''},answers:{},notes:{}};}
 const api={computeScope,activeQuestions,summarize,defaultState};
