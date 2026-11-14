@@ -69,7 +69,7 @@ class Pdf {
  bar(label,score,barColor=TEAL){this.ensure(37);this.at(label,M,this.y,10.7,true,INK);this.at(score===null?'-':`${Math.round(score)}%`,RIGHT-38,this.y,10.7,true,barColor);this.y-=12;this.rect(M,this.y-8,RIGHT-M,9,[.90,.94,.95]);if(score!==null)this.rect(M,this.y-8,(RIGHT-M)*Math.max(0,Math.min(100,score))/100,9,barColor);this.y-=24;}
  countBar(label,count,maximum,color=TEAL){this.ensure(31);this.at(label,M,this.y,9.5,true,INK);this.at(String(count),RIGHT-38,this.y,9.5,true,INK);this.y-=10;this.rect(M,this.y-7,RIGHT-M,8,[.90,.94,.95]);if(count>0 && maximum>0)this.rect(M,this.y-7,(RIGHT-M)*count/maximum,8,color);this.y-=20;}
  save(){
-  this.pages.forEach((p,i)=>{p.commands+=`${this.color([.83,.87,.90])} RG .5 w ${M} 47 m ${RIGHT} 47 l S\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${M} 33 Tm ${pdfLiteral('Premivue  |  Independent readiness assessment  |  Generated on device')} Tj ET\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${RIGHT-50} 33 Tm ${pdfLiteral(`Page ${i+1} / ${this.pages.length}`)} Tj ET\n`;});
+  this.pages.forEach((p,i)=>{p.commands+=`${this.color([.83,.87,.90])} RG .5 w ${M} 47 m ${RIGHT} 47 l S\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${M} 33 Tm ${pdfLiteral(this.footerLabel || 'Premivue  |  Independent readiness assessment  |  Generated on device')} Tj ET\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${RIGHT-50} 33 Tm ${pdfLiteral(`Page ${i+1} / ${this.pages.length}`)} Tj ET\n`;});
   const objects=[];
   function add(s){objects.push(s);return objects.length;}
   const catalog=add(''),pages=add(''),regular=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'),bold=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
@@ -347,6 +347,6 @@ function generate(state,result,tracker=[],options={}){
  if(detailed){p.gap(8);p.lineText('The detailed appendix records the answers entered at assessment time; it is not an independent verification of those answers.',{size:8.3,color:MUTED});}
  return p.save();
 }
-const api={generate};root.ReadinessPdf=api;
+const api={generate,PdfBuilder:Pdf};root.ReadinessPdf=api;
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
