@@ -56,17 +56,17 @@ class Pdf {
  }
  ensure(h){if(this.y-h<62)this.newPage();}
  gap(n=8){this.y-=n;this.ensure(4);}
- title(text){this.ensure(42);this.at(text,M,this.y,15,true,NAVY);this.y-=23;this.rule(M,this.y+5,W-2*M);this.y-=10;}
- subtitle(text){this.ensure(29);this.at(text,M,this.y,11,true,TEAL);this.y-=17;}
+ title(text){this.ensure(42);this.at(text,M,this.y,17,true,NAVY);this.y-=26;this.rule(M,this.y+5,W-2*M);this.y-=10;}
+ subtitle(text){this.ensure(29);this.at(text,M,this.y,12,true,TEAL);this.y-=19;}
  lineText(text,{size=9.4,bold=false,color=INK,indent=0,after=5,leading=13.4,width=null}={}){
    const x=M+indent;const max=width??(RIGHT-x);
-   const lines=wrap(text,max-5,size,bold);
+   const lines=wrap(text,max-9,size,bold);
    for(const ln of lines){this.ensure(leading+3);if(ln)this.at(ln,x,this.y,size,bold,color);this.y-=leading;}
    this.y-=after;
  }
  kv(label,value){this.lineText(`${label}  ${value||'-'}`,{size:9.5,after:3});}
  block(title,text){this.ensure(36);this.lineText(title,{size:10.1,bold:true,after:3});this.lineText(text,{size:9.2,color:INK,after:6});}
- bar(label,score,barColor=TEAL){this.ensure(31);this.at(label,M,this.y,9.5,true,INK);this.at(score===null?'-':`${Math.round(score)}%`,RIGHT-38,this.y,9.5,true,barColor);this.y-=10;this.rect(M,this.y-7,RIGHT-M,7,[.90,.94,.95]);if(score!==null)this.rect(M,this.y-7,(RIGHT-M)*Math.max(0,Math.min(100,score))/100,7,barColor);this.y-=20;}
+ bar(label,score,barColor=TEAL){this.ensure(37);this.at(label,M,this.y,10.7,true,INK);this.at(score===null?'-':`${Math.round(score)}%`,RIGHT-38,this.y,10.7,true,barColor);this.y-=12;this.rect(M,this.y-8,RIGHT-M,9,[.90,.94,.95]);if(score!==null)this.rect(M,this.y-8,(RIGHT-M)*Math.max(0,Math.min(100,score))/100,9,barColor);this.y-=24;}
  countBar(label,count,maximum,color=TEAL){this.ensure(31);this.at(label,M,this.y,9.5,true,INK);this.at(String(count),RIGHT-38,this.y,9.5,true,INK);this.y-=10;this.rect(M,this.y-7,RIGHT-M,8,[.90,.94,.95]);if(count>0 && maximum>0)this.rect(M,this.y-7,(RIGHT-M)*count/maximum,8,color);this.y-=20;}
  save(){
   this.pages.forEach((p,i)=>{p.commands+=`${this.color([.83,.87,.90])} RG .5 w ${M} 47 m ${RIGHT} 47 l S\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${M} 33 Tm ${pdfLiteral('Premivue  |  Independent readiness assessment  |  Generated on device')} Tj ET\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${RIGHT-50} 33 Tm ${pdfLiteral(`Page ${i+1} / ${this.pages.length}`)} Tj ET\n`;});
@@ -90,10 +90,65 @@ class Pdf {
 const B=root.ReadinessBasis || (typeof require==='function' ? require('./basis.js') : null);
 const CURRENT_QUESTIONS=root.ASSESSMENT_QUESTIONS||(typeof require==='function'?require('./question-data.json'):[]);
 const REPORT_REFRESH=new Set(['Q8','Q25','Q30','Q34']);
+// These are report-only next steps, not new statutory requirements or changes to the assessment.
+// Tier-specific text from the scoring engine takes precedence for Q5, Q24, Q25, Q31, Q35 and events.
+const PRACTICAL_ACTION={
+ Q9:'Brief relevant staff on lockdown decisions, areas and responsibilities. Check their understanding with a short scenario.',
+ Q10:'Agree when invacuation is safer than evacuation, identify suitable internal areas and brief the staff who would guide people.',
+ Q11:'Identify who controls entry and exit during a threat and rehearse safe activation without blocking emergency escape.',
+ Q13:'Choose a backup warning method, assign who activates it and check that relevant staff can use it if the main system fails.',
+ Q14:'Identify staff who need incident-response training, arrange a suitable briefing and record when it was completed.',
+ Q15:'Use realistic examples to brief staff on suspicious behaviour, including who to contact about concerns.',
+ Q16:'Confirm the person or channel for raising a concern, make it easy to find and check staff understand the route.',
+ Q17:'Plan a proportionate scenario review or drill, record what worked and assign improvements for anything that did not.',
+ Q18:'Name an incident lead and deputy, clarify their decisions and brief staff on who takes charge.',
+ Q20:'Explain when staff should report an unknown person rather than challenge them, and rehearse the safe reporting route.',
+ Q21:'Review how staff, visitors and contractors gain access; identify weaknesses and agree proportionate controls.',
+ Q22:'Review visitor arrangements, including suitable sign-in and supervision, without creating unsafe delays during an emergency.',
+ Q23:'Review peak-time movement and crowd-flow risks; agree who monitors busy areas and how concerns are escalated.',
+ Q26:'Provide a straightforward route for reporting suspicious activity, tell staff where to use it and check it works.',
+ Q27:'Set out who reviews incoming concerns, how urgent matters are escalated and how follow-up is recorded.',
+ Q28:'Confirm who may send incident alerts, which channels reach different areas and how message clarity is checked.',
+ Q29:'Use a simple incident and near-miss log; assign someone to review patterns and agreed actions.',
+ Q32:'Check which protective procedures were actually tested; arrange a proportionate exercise or review and record improvements.',
+ Q33:'Record relevant briefings, exercises, reviews and key decisions in a dated log that an authorised manager can find.',
+ Q36:'Brief each relevant role on actions during an incident and check understanding through a short scenario.',
+ Q37:'Identify external contacts relevant to the site, decide when to notify them and keep details current.',
+ Q38:'Agree responsibility boundaries with other site users and record arrangements for shared incidents.',
+ Q40:'Assign event roles, incident decision-makers and deputies; brief them before events take place.',
+ Q41:'Check how entry arrangements work for each event and how protective instructions will reach entrants safely.',
+ Q42:'Review each event against expected attendance, venue layout and protective procedures; record required adjustments.'
+};
+const SHORT_ACTION={
+ Q5:'Confirm appropriate evacuation, invacuation, lockdown and communication procedures, and who implements each.',
+ Q8:'Confirm lockdown activation responsibilities, warnings and safe implementation; rehearse the response.',
+ Q31:'Make procedures accessible and appropriately documented for the confirmed duty tier.',
+ Q13:'Agree and test a backup communication method if the primary system fails.',
+ Q7:'Review proportionate missing-person arrangements without delaying safe evacuation.',
+ Q25:'Record relevant vulnerabilities, then assign proportionate improvements and review dates.'
+};
 function adviceFor(a){
- if(!REPORT_REFRESH.has(a.q?.id)||!['no','partly'].includes(a.answer))return a.action||'Review the identified gap.';
- const q=CURRENT_QUESTIONS.find(x=>x.id===a.q.id);
- return (q?.[a.answer==='no'?'actionNo':'actionPartly'])||a.action||'Review the identified gap.';
+ const fallback=a.action||'Review the identified gap and assign a suitable next action.';
+ if(a.answer==='not_sure')return 'Confirm whether this arrangement exists and works in practice. '+(PRACTICAL_ACTION[a.q?.id]||fallback);
+ if(!['no','partly'].includes(a.answer))return fallback;
+ const q=CURRENT_QUESTIONS.find(x=>x.id===a.q?.id);
+ if(REPORT_REFRESH.has(a.q?.id))return q?.[a.answer==='no'?'actionNo':'actionPartly']||fallback;
+ if(['Q5','Q24','Q25','Q31','Q35','Q39','Q41','Q42'].includes(a.q?.id)){
+   if(a.q?.id==='Q31')return a.answer==='no'?'Draft clear, accessible procedures and check what documentation is appropriate for the confirmed duty tier.':'Review existing procedures for missing steps, accessibility and any tier-specific documentation requirements.';
+   if(a.q?.id==='Q35')return 'Confirm a preparedness lead and their responsibilities. A statutory senior-individual designation applies only where the enhanced-tier/event conditions are met.';
+   if(['Q24','Q39','Q41','Q42'].includes(a.q?.id)){
+     const detail={Q24:'Review existing barriers and access measures, identify proportionate improvements and check safe escape arrangements.',Q39:'Brief event staff on the relevant protective procedures and check their suitability for event layouts and operating hours.',Q41:PRACTICAL_ACTION.Q41,Q42:PRACTICAL_ACTION.Q42}[a.q.id];
+     const tierNote=fallback.includes('Check scope first.')?fallback.slice(fallback.indexOf('Check scope first.')):
+       fallback.includes('Event scope has not been confirmed.')?fallback.slice(fallback.indexOf('Event scope has not been confirmed.')):'';
+     return detail+(tierNote?' '+tierNote:'');
+   }
+   return fallback;
+ }
+ return PRACTICAL_ACTION[a.q?.id]||fallback;
+}
+function legalBasisFor(a,scope,business){
+ const label=(B?.classify?.(a.q.id,scope,business)||{label:'Preparedness'}).label;
+ return label==='Linked to legal duty'?'Statutory-duty-linked (scope and commencement apply)':label;
 }
 function ukDate(s){
  const isoDate=String(s||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(isoDate))return '';
@@ -153,48 +208,55 @@ function generate(state,result,tracker=[],options={}){
  p.at(rag.toUpperCase(),M+18,p.y-15,16,true,c);p.at(score,RIGHT-110,p.y-24,27,true,NAVY);
  p.at(`${r.answered||0} of ${r.total||0} applicable questions  |  ${r.skippedByRouting||0} routed out  |  ${r.unanswered||0} unanswered`,M+18,p.y-41,8.6,false,MUTED);
  p.y-=70;
- p.lineText(`${criticalFlags} critical safeguards flagged   |   ${lowSections.length} very low-scoring sections   |   ${actions.length} improvement actions`,{size:8.8,after:4});
+ p.lineText(`${criticalFlags} critical safeguards flagged${criticalFlags?' ('+[...(r.critical||[]),...(r.criticalPartly||[])].map(q=>q.id).join(', ')+')':''}   |   ${lowSections.length} very low-scoring sections   |   ${actions.length} actions`,{size:9.1,after:5});
  const reasons=r.ragReasons||[];
  if(reasons.length)p.lineText('Rating limited by: '+reasons.join('; '),{size:8.7,bold:true,color:RAG.Amber,after:4});
- p.lineText(`${(r.dutyProcedureGaps||[]).length} section 5 procedure checks need confirmation (separate from advisory controls).`,{size:8.5,after:4});
+ p.lineText(`${(r.dutyProcedureGaps||[]).length} section 5 procedure checks need confirmation${(r.dutyProcedureGaps||[]).length?': '+(r.dutyProcedureGaps||[]).map(id=>id+' '+({Q5:'overall procedures',Q6:'evacuation',Q8:'lockdown',Q10:'invacuation',Q11:'access control',Q12:'communication'}[id]||'procedure')).join('; '):''}.`,{size:8.9,leading:12.5,after:5});
  p.gap(5);
- p.subtitle('03  Top priorities for management review');
+ p.subtitle('03  Recommended management actions');
  if(actions.length){
-  const ordered=actions.slice(); // summarize already orders by effective tier-specific urgency, not source critical flag
+  const ordered=actions.slice(); // effective, tier-specific urgency already determined by the scoring engine
   for(const a of ordered.slice(0,3)){
-    const text=`${a.q.id}  ${a.q.section}: ${a.finding}`;
-    p.lineText(text,{size:9.1,after:4,leading:13});
+    const line=SHORT_ACTION[a.q.id]||adviceFor(a);
+    p.lineText(`${a.q.id}  |  ${a.priority.toUpperCase()}  |  ${a.q.section}`,{size:10.0,bold:true,color:a.priority==='Immediate'?RAG.Red:a.priority==='High'?RAG.Amber:TEAL,after:1,leading:13});
+    p.lineText(line,{size:10.0,leading:13.5,after:6,indent:6});
   }
  }else p.lineText('No improvement actions were generated. Review the reliability of the answers.',{size:9.1});
  if((r.answerChecks||[]).length)p.lineText(`${r.answerChecks.length} answer combinations need checking. See page 2.`,{size:8.6,color:RAG.Amber,after:4});
  if(typeof options.comparison==='number')p.lineText(`Change since previous comparable assessment: ${options.comparison>0?'+':''}${options.comparison.toFixed(1)} percentage points.`,{size:8.7,bold:true,color:TEAL,after:3});
  p.gap(8);smallRule(p);
- p.lineText('Readiness is a weighted self-assessment, not legal compliance or a prediction of an attack. Scope and duty-tier decisions must be confirmed separately. Improvement priority is not the same as a legal obligation.',{size:8.4,color:MUTED,leading:12});
+ p.lineText('Readiness is a self-assessment, not a compliance certificate. Statutory-duty-linked actions depend on confirmed scope and commencement; High priority is not the same as a legal breach.',{size:8.9,color:MUTED,leading:12.5});
  // Page two: clean section profile and concise supporting information.
  nextPage(p,'Readiness by topic');
- p.lineText('Scores show the distribution of recorded answers. A low advisory section is a preparedness gap, not automatically a statutory breach.',{size:8.9,color:MUTED,after:10});
+ p.lineText('Scores reflect recorded answers. Advisory weaknesses are not automatically statutory breaches.',{size:9.6,color:MUTED,after:11,leading:13.5});
  for(const section of sections){
    const v=section.max?100*section.earned/section.max:null;
    const clr=lowSections.includes(section.name)?RAG.Red:(v!==null&&v<50)?RAG.Amber:TEAL;
    p.bar(section.name+(lowSections.includes(section.name)?'  -  review needed':''),v,clr);
  }
- p.gap(11);
+ const weak=sections.filter(s=>s.max&&100*s.earned/s.max<=50).sort((a,b)=>a.earned/a.max-b.earned/b.max).slice(0,3);
+ if(weak.length){
+   p.gap(6);p.subtitle('Areas requiring attention');
+   p.lineText(weak.map(s=>`${s.name} ${Math.round(s.earned/s.max*100)}%`).join('   |   '),{size:10.0,bold:true,color:RAG.Amber,leading:13.8,after:5});
+ }
+ p.gap(6);
  p.subtitle('Answer summary');
  const counts={yes:0,partly:0,no:0,not_sure:0,na:0,missing:0};
  for(const row of rows){const a=row.answer||'missing';counts[a]=(counts[a]||0)+1;}
- p.lineText(`${counts.yes} Yes   |   ${counts.partly} Partly   |   ${counts.no} No   |   ${counts.not_sure} Not sure   |   ${counts.na} N/A`,{size:10,bold:true,after:4});
+ p.lineText(`${counts.yes} Yes   |   ${counts.partly} Partly   |   ${counts.no} No   |   ${counts.not_sure} Not sure   |   ${counts.na} N/A`,{size:10.4,bold:true,after:4});
  p.gap(7);
  if((r.answerChecks||[]).length){
   p.subtitle('Answers to confirm');
-  for(const item of (r.answerChecks||[]).slice(0,5)){
+  for(const item of (r.answerChecks||[]).slice(0,detailed?3:2)){
    const compact=item.replace(/\. Check whether Q5 should remain Yes and record what is missing\./,'. Check whether Q5 remains Yes.');
-   p.lineText('- '+compact,{size:8.6,leading:12,after:4});
+   p.lineText('- '+compact,{size:9.1,leading:13,after:4});
   }
+  if((r.answerChecks||[]).length>(detailed?3:2))p.lineText(`Plus ${(r.answerChecks||[]).length-(detailed?3:2)} further checks in the app.`,{size:8.6,color:MUTED,after:3});
   p.gap(5);
  }
  p.subtitle('Scope facts');
- p.lineText(`Premises use: ${b.activity||'Not specified'}    Expected peak: ${b.peak||'Not supplied'}    Public building: ${b.building||'Not sure'}`,{size:8.8,after:4});
- p.lineText(`Events: ${b.events||'Not sure'}    Event peak: ${b.eventPeak||'Not supplied'}    Next review: ${b.reviewDate||'Not set'}`,{size:8.8,after:5});
+ p.lineText(`Premises use: ${b.activity||'Not specified'}    Expected peak: ${b.peak||'Not supplied'}    Public building: ${b.building||'Not sure'}`,{size:9.4,after:4});
+ p.lineText(`Events: ${b.events||'Not sure'}    Event peak: ${b.eventPeak||'Not supplied'}    Next review: ${b.reviewDate||'Not set'}`,{size:9.4,after:5});
  p.gap(5);smallRule(p);
  p.lineText('Scoring version: '+(r.scoringVersion||'historical method')+'   |   Coverage: '+(r.coverage??'Not recorded')+'%',{size:8.1,color:MUTED,leading:11.5,after:2});
  p.lineText('Scoring: Yes = 2, Partly = 1, No/Not sure = 0, multiplied by question weights. Green 75%+, Amber 50%-74.99%, Red below 50%; any unanswered or unjustified N/A item withholds a rating; critical or very low-section gaps may prevent Green. This is Premivue methodology, not an official statutory standard.',{size:8.4,color:MUTED,leading:12,after:3});
@@ -203,15 +265,18 @@ function generate(state,result,tracker=[],options={}){
  // Clear and succinct full action plan, not repeated in full question record.
  nextPage(p,'Prioritised action plan');
  p.lineText(historical?
-   'Action status is shown at the assessment date ONLY where a dated log or action record supports it. Otherwise it says Not recorded. Owners and deadlines appear only when historically documented.':
+   'Statuses reflect dated information at the assessment date; where unknown they are marked Not recorded. Owners and due dates appear only when known.':
    'Actions are prioritised by preparedness urgency; legal and advisory labels are separate. Current tracker information is dated when available.',
-   {size:8.8,color:MUTED,leading:12.5,after:8});
- p.lineText('Recommendations use current Premivue report wording; original assessment answers and dated action logs are unchanged.',{size:8.1,color:MUTED,leading:11.3,after:11});
+   {size:detailed?9.2:8.8,color:MUTED,leading:detailed?13.2:12.1,after:detailed?8:4});
+ p.lineText('Assign an owner and target date to each outstanding action. Current wording is used; historic answers and logs are unchanged.',{size:detailed?9.0:8.8,color:MUTED,leading:detailed?13:12,after:detailed?9:4});
  const mapTracker=new Map((Array.isArray(tracker)?tracker:[]).map(a=>[a.questionId,a]));
  if(!actions.length)p.lineText('No actions generated from the recorded answers.',{size:9.5});
  const displayed=detailed?actions:actions.slice(0,8);
+ let previousGroup='';
  for(const a of displayed){
-   const basis=B?.classify?.(a.q.id,sc,b)||{label:'Preparedness',reference:''};
+   const group=a.priority==='Immediate'?'Immediate priority':a.priority==='High'?'High priority':a.priority==='Medium'?'Medium priority':'Low priority';
+   if(group!==previousGroup){p.ensure(34);p.gap(previousGroup?(detailed?9:5):(detailed?4:1));p.subtitle(group+` - ${displayed.filter(x=>(x.priority==='Immediate'?'Immediate priority':x.priority==='High'?'High priority':x.priority==='Medium'?'Medium priority':'Low priority')===group).length} ${detailed?'actions':'shown'}`);previousGroup=group;} 
+   const basis={label:legalBasisFor(a,sc,b)};
    const tr=mapTracker.get(a.q.id);
    const headline=`${a.q.id}  /  ${a.q.section}   -   ${a.priority.toUpperCase()}${(r.critical||[]).some(q=>q.id===a.q.id)||(r.criticalPartly||[]).some(q=>q.id===a.q.id)?'   /   CRITICAL':''}`;
    const recommendation=adviceFor(a);
@@ -236,18 +301,19 @@ function generate(state,result,tracker=[],options={}){
       metadata=info.join('   |   ');
    }
    const closure=tr?.status==='Completed'&&!historical&&tr.note?'Closure: '+tr.note:'';
-   const height=32+lineCount(recommendation,RIGHT-M-10,9.15,false)*12.8+
-      lineCount(label,RIGHT-M-10,8.1,false)*10.8+
-      (metadata?lineCount(metadata,RIGHT-M-10,8.1,false)*11:0)+
-      (closure?lineCount(closure,RIGHT-M-10,8,false)*11.5:0);
+   const bodySize=detailed?10.0:9.55,bodyLeading=detailed?14:12.7,labelSize=detailed?8.9:8.5,labelLeading=detailed?12:10.9;
+   const height=(detailed?36:29)+lineCount(recommendation,RIGHT-M-14,bodySize,false)*bodyLeading+
+      lineCount(label,RIGHT-M-14,labelSize,false)*labelLeading+
+      (metadata?lineCount(metadata,RIGHT-M-14,8.6,false)*12:0)+
+      (closure?lineCount(closure,RIGHT-M-14,8.6,false)*12:0);
    p.ensure(Math.max(48,height));
    p.rule(M,p.y+12,RIGHT-M,[.85,.89,.92]);
-   p.at(headline,M,p.y,9.2,true,a.priority==='Immediate'?RAG.Red:a.priority==='High'?RAG.Amber:TEAL);p.y-=15;
-   p.lineText(label,{size:8.1,color:MUTED,leading:10.8,after:2});
-   p.lineText(recommendation,{size:9.15,leading:12.4,after:1});
-   if(metadata)p.lineText(metadata,{size:8.1,color:MUTED,leading:11.2,after:1});
-   if(closure)p.lineText(closure,{size:8,color:MUTED,leading:11.2,after:1});
-   p.gap(3);
+   p.at(headline,M,p.y,detailed?10.0:9.6,true,a.priority==='Immediate'?RAG.Red:a.priority==='High'?RAG.Amber:TEAL);p.y-=15;
+   p.lineText(label,{size:labelSize,color:MUTED,leading:labelLeading,after:detailed?2:1});
+   p.lineText(recommendation,{size:bodySize,leading:bodyLeading,after:detailed?2:1});
+   if(metadata)p.lineText(metadata,{size:8.6,color:MUTED,leading:12,after:1});
+   if(closure)p.lineText(closure,{size:8.6,color:MUTED,leading:12,after:1});
+   p.gap(detailed?7:2);
  }
  if(!detailed&&actions.length>8){p.gap(9);p.lineText(`${actions.length-8} further actions are in the full assessment appendix and action tracker.`,{size:9,bold:true,color:TEAL,after:3});}
  // Scope and legal disclaimers are presented once in the summary and scoring page.

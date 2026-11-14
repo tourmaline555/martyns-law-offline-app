@@ -19,3 +19,7 @@ All recorded values are self-reported. Do not include unnecessary security-sensi
 - Each action uses a compact status/date line, with owner and due date only where historically supported. The source/explanation appears once.
 - Practical, fuller recommendations for Q8, Q25, Q30 and Q34; original answers, action history, RAG thresholds, weights and the v4.0 scoring method remain unchanged.
 - Normal management report remains three pages in the Riverside example; detailed August report is seven pages.
+
+## v4.2 management and full PDF polishing
+
+Both PDFs now lead with practical management actions, name the specific critical safeguards, highlight weak areas and use clearer statutory-duty-linked wording. The short report is still three pages for the Riverside demo; the full version has larger action text and priority groups. See `RELEASE-v4.2.md` for Termux commands. No changes to readiness scoring or audit records.

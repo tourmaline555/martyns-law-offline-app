@@ -46,23 +46,23 @@ function generate(detailed,filename){
 const out=generate(true,process.env.PREMIVUE_FULL_SAMPLE||path.join(os.tmpdir(),'premivue41-full-test.pdf'));
 const short=generate(false,process.env.PREMIVUE_MANAGEMENT_SAMPLE||path.join(os.tmpdir(),'premivue41-management-test.pdf'));
 const s=out.text;
-assert.match(s,/Action status is shown at the assessment date ONLY/);
+assert.match(s,/Statuses reflect dated information at the assessment date/);
 assert.match(s,/Open \(raised 14 May 2026\)/);
 assert.doesNotMatch(s,/Action status at assessment: Open \(dated action history\)/);
 assert.match(s,/Confirm who activates lockdown/);
 assert.match(s,/Record the weaknesses already identified/);
 assert.match(s,/Confirm who can authorise escalation/);
 assert.match(s,/Agree a consistent procedure-review schedule/);
-assert.match(s,/Top priorities for management review/);
-assert.match(s,/Q5\s+Procedures/);
-assert.match(s,/Q8\s+Procedures/);
-assert.match(s,/Q31\s+Documentation/);
+assert.match(s,/Recommended management actions/);
+assert.match(s,/Q5\s+\|\s+HIGH\s+\|\s+Procedures/);
+assert.match(s,/Q8\s+\|\s+HIGH\s+\|\s+Procedures/);
+assert.match(s,/Q31\s+\|\s+HIGH\s+\|\s+Documentation/);
 assert.doesNotMatch(s,/Owner: Demo Premises Manager/); // assigned later, not in historical event log
-assert.equal(s.split('Action status is shown at the assessment date ONLY').length-1,1);
-assert.equal(short.text.split('Action status is shown at the assessment date ONLY').length-1,1);
+assert.equal(s.split('Statuses reflect dated information at the assessment date').length-1,1);
+assert.equal(short.text.split('Statuses reflect dated information at the assessment date').length-1,1);
 // Use encoded report output to avoid silently changing the 38 question IDs, weights or scoring.
 assert.equal(L.activeQuestions(Q,august.business).length,37);
 assert.equal(L.METHODOLOGY,'premivue-2026-v40-complete-coverage');
-assert.match(fs.readFileSync('index.html','utf8'),/v4\.1/);
-assert.match(fs.readFileSync('sw.js','utf8'),/ml-check-v41/);
+assert.match(fs.readFileSync('index.html','utf8'),/v4\.2/);
+assert.match(fs.readFileSync('sw.js','utf8'),/ml-check-v42/);
 console.log('PASS v4.1: dated action provenance vs unknown, historical owner/deadline safety, precise recommendations, compact output, unchanged scoring and saved IDs.');
