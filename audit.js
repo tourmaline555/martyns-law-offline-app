@@ -10,7 +10,7 @@ function snapshot(state,report){
  if(!state?.business?.name?.trim())throw new Error('Business name is required');
  const id= typeof root.crypto?.randomUUID==='function'?root.crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`;
  const createdAt=new Date().toISOString();
- return {id,createdAt,format:'ml-record-v2',scoringVersion:'matrix-2026-v2-safeguards',questionnaireVersion:'v3.6-scope-and-report-2026-11-14',siteKey:siteKey(state.business),
+ return {id,createdAt,format:'ml-record-v2',scoringVersion:'matrix-2026-v2-safeguards',questionnaireVersion:'v3.7-scope-edit-and-report-2026-11-14',siteKey:siteKey(state.business),
    business:clone(state.business),answers:clone(state.answers),notes:clone(state.notes||{}),result:clone(report)};
 }
 async function list(){const out=[];await transact('readonly',store=>{const req=store.openCursor();req.onsuccess=()=>{const c=req.result;if(c){out.push(c.value);c.continue();}};});return out.sort((a,b)=>a.createdAt.localeCompare(b.createdAt));}

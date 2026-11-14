@@ -53,7 +53,7 @@ function makeRecord(id,createdAt,bad){const ans=Object.fromEntries(available.map
  const repeat=await A.reconcile([a,b,c]);assert.equal(repeat,3);assert.equal((await A.list()).length,1);
  const history=await A.events();const merge=await A.merge(rows,history);assert.equal(merge.actionsAdded,0);assert.equal(merge.eventsAdded,0);
  const result=c.result;const state={business:c.business,answers:{},notes:{}};
- const bytes=Pdf.generate(state,result,rows);assert.ok(bytes.length>15000);
- require('node:fs').writeFileSync('/mnt/data/Martyns-Law-v3-Sample-Action-Report.pdf',bytes);
+ const bytes=Pdf.generate(state,result,rows);assert.ok(bytes.length>5000);
+ if(process.env.SAMPLE_PDF)require('node:fs').writeFileSync(process.env.SAMPLE_PDF,bytes);
  console.log(`PASS action DB: saved + changed + carried + completed + re-opened; ${history.length} logged events; archive merge idempotent; PDF ${bytes.length} bytes`);
 })().catch(e=>{console.error(e);process.exitCode=1;});

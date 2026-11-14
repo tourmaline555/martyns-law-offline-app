@@ -1,4 +1,4 @@
-# Premivue readiness prototype — v3.6
+# Premivue readiness prototype — v3.7
 
 ## Scope and tier-specific recommendations
 
@@ -58,3 +58,11 @@ This independent self-assessment is not an official SIA assessment or legal cert
 - The questionnaire remains 38 checks, with scope handled separately and conditional routing preserved. Historical snapshots are not silently rescored or modified.
 
 Tests: `node test-v36.js` and `node test.js`, plus the other `test-*.js` files.
+
+## v3.7 - clarity and scope corrections
+
+- Result scope panel has **Correct scope answers**. This opens the existing scope form and returns directly to recalculated results; readiness answers and draft notes remain intact. The field **Is a publicly accessible building or part of one included?** accepts Yes / No / Not sure.
+- Historical audit records remain read-only; **Create corrected copy (scope)** under a saved record creates a new editable draft from the archived answers without modifying the original.
+- Standard PDF is a 3-page, focused management report for the example nightclub; full question-by-question responses are a separate **Download full assessment appendix** option under More options. Pagination adjusts to the length of content.
+- Share report shares the shorter management PDF, while the detailed appendix is available for an audit. The existing scoring and action tracking are unchanged.
+- Scope and all assessment data remain local to the device; back up the archive before installing.

@@ -59,3 +59,7 @@
 .score-item.severe-section {border:1px solid #dcaa9e; background:#fff5f2; border-radius:12px; padding:12px;}
 .score-item.severe-section .score-item-head {color:#933a27; font-weight:700;}
 .score-item.severe-section .progress-track > span {background:#b84e3d !important;}
+
+/* v3.7: make correcting scope visible rather than burying it in More options. */
+.scope-edit-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.scope-edit-heading .section-title{margin:0}.scope-edit-heading .button{white-space:normal}.scope-edit-heading+.notice{margin-top:8px}
+@media(max-width:560px){.scope-edit-heading{align-items:stretch;flex-direction:column}.scope-edit-heading .button{width:100%}}

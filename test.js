@@ -31,7 +31,7 @@ answers['Q12']='no'; for(const q of applicable) answers[q.id]='no';s=L.summarize
 const state=L.defaultState();state.business={...b,date:'2026-11-13'};state.answers=answers;state.notes={'Q5':'Test note: see log.'};
 const pdf=Pdf.generate(state,s);
 assert.ok(pdf.length>10000);assert.equal(Buffer.from(pdf.slice(0,8)).toString('ascii'),'%PDF-1.4');
-fs.writeFileSync(path.join(root,'../Martyns-Law-Sample-Report.pdf'),pdf);
+if(process.env.SAMPLE_PDF)fs.writeFileSync(process.env.SAMPLE_PDF,pdf);
 console.log('PASS: 42 questions; conditional flow; premises/event scope; RAG thresholds and overrides; generated',pdf.length,'PDF bytes.');
 const Audit=require('./audit.js');
 const Policy=require('./policy.js');

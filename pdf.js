@@ -18,7 +18,7 @@ class Pdf {
  rule(x,y,w,color=[.85,.89,.91]){this.out(`${this.color(color)} RG .6 w ${this.fmt(x)} ${this.fmt(y)} m ${this.fmt(x+w)} ${this.fmt(y)} l S\n`);}
  out(cmd){this.page.commands+=cmd;}
  at(text,x,y,size=10,bold=false,color=INK){this.out(`${this.color(color)} rg BT /${bold?'F2':'F1'} ${this.fmt(size)} Tf 1 0 0 1 ${this.fmt(x)} ${this.fmt(y)} Tm ${pdfLiteral(text)} Tj ET\n`);}
- newPage(){const page={commands:'',n:this.pages.length+1};this.pages.push(page);this.page=page;this.rect(0,H-72,W,72,NAVY);this.at("MARTYN'S LAW  /  READINESS CHECK",M,H-43,16,true,[1,1,1]);this.at('Private self-assessment  |  Not a legal compliance certificate',M,H-60,8,false,[.81,.87,.91]);this.y=H-103;}
+ newPage(){const page={commands:'',n:this.pages.length+1};this.pages.push(page);this.page=page;this.rect(0,H-68,W,68,NAVY);this.at('PREMIVUE',M,H-39,17,true,[1,1,1]);this.at("Martyn's Law readiness assessment   |   Independent self-assessment",M,H-56,8,false,[.81,.87,.91]);this.y=H-97;}
  ensure(h){if(this.y-h<62)this.newPage();}
  gap(n=8){this.y-=n;this.ensure(4);}
  title(text){this.ensure(42);this.at(text,M,this.y,15,true,NAVY);this.y-=23;this.rule(M,this.y+5,W-2*M);this.y-=10;}
@@ -31,10 +31,10 @@ class Pdf {
  }
  kv(label,value){this.lineText(`${label}  ${value||'-'}`,{size:9.5,after:3});}
  block(title,text){this.ensure(36);this.lineText(title,{size:10.1,bold:true,after:3});this.lineText(text,{size:9.2,color:INK,after:6});}
- bar(label,score,barColor=TEAL){this.ensure(31);this.at(label,M,this.y,9.5,true,INK);this.at(score===null?'-':`${Math.round(score)}%`,RIGHT-38,this.y,9.5,true,INK);this.y-=10;this.rect(M,this.y-7,RIGHT-M,7,[.90,.94,.95]);if(score!==null)this.rect(M,this.y-7,(RIGHT-M)*Math.max(0,Math.min(100,score))/100,7,barColor);this.y-=20;}
+ bar(label,score,barColor=TEAL){this.ensure(31);this.at(label,M,this.y,9.5,true,INK);this.at(score===null?'-':`${Math.round(score)}%`,RIGHT-38,this.y,9.5,true,barColor);this.y-=10;this.rect(M,this.y-7,RIGHT-M,7,[.90,.94,.95]);if(score!==null)this.rect(M,this.y-7,(RIGHT-M)*Math.max(0,Math.min(100,score))/100,7,barColor);this.y-=20;}
  countBar(label,count,maximum,color=TEAL){this.ensure(31);this.at(label,M,this.y,9.5,true,INK);this.at(String(count),RIGHT-38,this.y,9.5,true,INK);this.y-=10;this.rect(M,this.y-7,RIGHT-M,8,[.90,.94,.95]);if(count>0 && maximum>0)this.rect(M,this.y-7,(RIGHT-M)*count/maximum,8,color);this.y-=20;}
  save(){
-  this.pages.forEach((p,i)=>{p.commands+=`${this.color([.83,.87,.90])} RG .5 w ${M} 47 m ${RIGHT} 47 l S\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${M} 33 Tm ${pdfLiteral('Readiness self-assessment  |  Generated on device; no external processing')} Tj ET\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${RIGHT-50} 33 Tm ${pdfLiteral(`Page ${i+1} / ${this.pages.length}`)} Tj ET\n`;});
+  this.pages.forEach((p,i)=>{p.commands+=`${this.color([.83,.87,.90])} RG .5 w ${M} 47 m ${RIGHT} 47 l S\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${M} 33 Tm ${pdfLiteral('Premivue  |  Private report  |  Generated on this device')} Tj ET\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${RIGHT-50} 33 Tm ${pdfLiteral(`Page ${i+1} / ${this.pages.length}`)} Tj ET\n`;});
   const objects=[];
   function add(s){objects.push(s);return objects.length;}
   const catalog=add(''),pages=add(''),regular=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'),bold=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
@@ -52,163 +52,144 @@ class Pdf {
  }
 }
 const B=root.ReadinessBasis || (typeof require==='function' ? require('./basis.js') : null);
-const mapAnswer={yes:'Yes',partly:'Partly',no:'No',not_sure:'Not sure',na:'Not applicable'};
-function generate(state,result,tracker=[]){
- const p=new Pdf(),b=state.business,r=result;
- p.title('Management summary - readiness assessment');
- p.kv('Organisation:',b.name||'Not specified');p.kv('Premises:',b.site||'Not specified');
- p.kv('Assessor:',b.assessor||'Not specified');p.kv('Assessment date:',b.date||new Date().toISOString().slice(0,10));
- p.kv('Report status:',state._audit?'Archived - read-only record':'DRAFT - NOT SAVED TO AUDIT TRAIL');
- p.kv('Questionnaire:',state._audit?.questionnaireVersion||'v3.6 current assessment');
- if(state._audit){p.kv('Audit record ID:',state._audit.id);p.kv('Saved at (UTC):',state._audit.createdAt);}
- p.gap(8);
- p.subtitle('1  |  PRELIMINARY LEGAL SCOPE - CHECK THIS FIRST');
- const flagged=r.scope.scopeUnknown || r.scope.premises.startsWith('Review required');
- p.lineText('Premises: '+r.scope.premises,{size:11,bold:true,color:flagged?RAG.Red:NAVY,after:3});
- p.lineText('Events: '+r.scope.event,{size:9.6,bold:true,color:r.scope.event.startsWith('Review required')?RAG.Amber:INK,after:4});
- if(flagged){p.lineText('SCOPE REVIEW REQUIRED: The answers may be inconsistent or incomplete. Do not treat the readiness rating as a determination that the Act does or does not apply.',{size:9.2,bold:true,color:RAG.Red,after:5});}
- for(const reason of (r.scope.reasons||[]).slice(0,2))p.lineText('Check: '+reason,{size:8.7,after:3});
- p.gap(4);
- p.subtitle('2  |  READINESS RATING - NOT A COMPLIANCE CERTIFICATE');
- p.lineText(`${r.rag.toUpperCase()}  |  ${r.score===null?'No score':`${Math.round(r.score)}% weighted score`}`,{bold:true,size:23,color:RAG[r.rag]||RAG.Unrated,leading:29,after:3});
- p.lineText(`${r.answered}/${r.total} applicable scored, ${r.skippedByRouting??0} routed out of ${r.questionBank||38}; scope checked separately. ${r.unanswered} unanswered.`,{size:9.2,after:4});
- p.lineText(`Critical safeguards: ${r.critical.length} No/Not sure and ${(r.criticalPartly||[]).length} Partly. Severe sections: ${(r.lowSections||[]).length}. Actions: ${r.actions.length}.`,{size:9.3,after:5});
- if(r.ragReasons?.length)p.lineText('AMBER CAP: '+r.ragReasons.join('; '),{size:8.8,bold:true,color:RAG.Amber,after:4});
- p.gap(3);
- p.subtitle('3  |  TOP IMPROVEMENTS');
- const top=[...r.actions].sort((a,b)=>(a.q.critical==='Y'?0:1)-(b.q.critical==='Y'?0:1)).slice(0,3);
- if(top.length){for(const a of top)p.lineText(`${a.priority}  |  ${a.q.id}${a.q.critical==='Y'?' (critical safeguard)':''}: ${a.finding}`,{size:9.1,after:4});}
- else p.lineText('No improvement actions raised from the recorded answers. Review their accuracy and the site context.',{size:9,after:4});
- if(r.answerChecks?.length){p.gap(4);p.subtitle('ANSWERS TO VERIFY');for(const message of r.answerChecks.slice(0,3))p.lineText(message,{size:8.6,color:RAG.Amber,after:3});if(r.answerChecks.length>3)p.lineText(`${r.answerChecks.length-3} further checks appear in the results screen.`,{size:8.5,color:MUTED});}
- p.gap(4);
- p.lineText('Readiness and legal scope are separate. The RAG methodology is independent and does not establish compliance, safety or likelihood of an attack.',{size:8.7,color:MUTED});
- p.newPage();
- p.title('Legal scope and duties to confirm');
- p.lineText('The following is a preliminary scope screen, not legal advice. Confirm ambiguous answers before relying on a duty-tier conclusion.',{size:9.2,after:9});
- p.kv('Premises classification:',r.scope.premises);p.kv('Event classification:',r.scope.event);
- p.kv('Expected premises peak:',r.scope.peak===null?'Not provided':r.scope.peak+' people');
- if(b.events==='yes'||b.events==='unknown')p.kv('Expected event peak:',r.scope.eventPeak===null?'Not provided':r.scope.eventPeak+' people');
- p.kv('Premises use:',b.activity||'Unspecified');p.kv('Publicly accessible building:',b.building||'Unconfirmed');
- p.kv('Premises exclusion selected:',b.excluded||'Unconfirmed');
- if(r.scope.special)p.lineText('Special tier arrangements may apply to places of worship and education/childcare settings. Confirm the precise use.',{size:9});
- p.subtitle('SCOPE ANSWERS TO CHECK');
- if(r.scope.reasons?.length)for(const reason of r.scope.reasons.slice(0,5))p.lineText('- '+reason,{size:8.9,after:4});
- else p.lineText('No additional scope clarification indicated by these answers; independent verification is still appropriate.',{size:8.8});
- p.gap(5);p.subtitle('STATUTORY OBLIGATIONS TO CONFIRM IF IN SCOPE');
- for(const n of B.overview(r.scope))p.lineText('- '+n,{size:8.8,after:4});
+const mapAnswer={yes:'Yes',partly:'Partly',no:'No',not_sure:'Not sure',na:'N/A'};
+const priorityColours={Immediate:RAG.Red,High:RAG.Amber,Medium:TEAL,Low:MUTED};
+function pct(score){return score===null||!Number.isFinite(score)?'Not rated':Math.round(score)+'%';}
+function lineCount(str,w,size,bold){return wrap(str,w,size,bold).length;}
+function smallRule(p){p.rule(M,p.y+7,RIGHT-M,[.86,.9,.92]);p.y-=8;}
+function nextPage(p,title){p.newPage();p.title(title);}
+function readableScopeStatus(s){return (s||'Review required').replace(' - conflicting scope answers',' - check answers');}
+function generate(state,result,tracker=[],options={}){
+ const p=new Pdf(),r=result||{},b=state.business||{},detailed=!!options.detailed;
+ const sc=r.scope||{premises:'Review required',event:'Review required',reasons:[],scopeUnknown:true};
+ const actions=Array.isArray(r.actions)?r.actions:[];
+ const sections=Array.isArray(r.sections)?r.sections:[];
+ const rows=Array.isArray(r.rows)?r.rows:[];
+ const criticalFlags=(r.critical||[]).length+(r.criticalPartly||[]).length;
+ const lowSections=r.lowSections||[];
+ const scopeReview=!!sc.scopeUnknown || String(sc.premises||'').startsWith('Review required');
+ const status=state._audit?'ARCHIVED / READ-ONLY':'DRAFT / NOT ARCHIVED';
+ const title=String(b.name||'Organisation').slice(0,120);
+ // Page one: actual management decision and prioritised risks; no full question duplication.
+ p.title('Assessment summary');
+ p.lineText(title,{size:14,bold:true,after:2});
+ p.lineText(`${b.site||'Site not recorded'}  |  Assessed ${b.date||'Date not recorded'}`,{size:9,color:MUTED,after:2});
+ p.lineText(`Assessor: ${b.assessor||'Not supplied'}   |   ${status}`,{size:8.4,color:MUTED,after:4});
+ if(state._audit?.id)p.lineText(`Audit reference: ${state._audit.id}`,{size:8.4,color:MUTED,after:4});
+ p.gap(7);
+ // Distinguish legal scope from self-assessment readiness.
+ p.subtitle('01  Legal scope - preliminary');
+ const scopeColour=scopeReview?RAG.Red:TEAL;
+ p.rect(M,p.y-48,RIGHT-M,56,[.95,.97,.98]);p.rect(M,p.y-48,3,56,scopeColour);
+ p.at('Premises',M+15,p.y-9,8,false,MUTED);
+ p.at('Events',M+15,p.y-29,8,false,MUTED);
+ const statusX=M+75,area=RIGHT-statusX-12;
+ const prem=wrap(readableScopeStatus(sc.premises),area,9.1,true);
+ const evt=wrap(sc.event||'Review required',area,8.7,false);
+ p.at(prem[0]||'',statusX,p.y-9,9.1,true,scopeColour);
+ p.at(evt[0]||'',statusX,p.y-29,8.7,false,INK);
+ p.y-=66;
+ if(scopeReview){
+   p.lineText('SCOPE NEEDS REVIEW BEFORE RELYING ON ANY LEGAL TIER',{size:9.5,bold:true,color:RAG.Red,after:3});
+   if((sc.reasons||[]).length)p.lineText('Check: '+sc.reasons[0],{size:8.6,color:INK,leading:12,after:4});
+ }
  p.gap(6);
- p.lineText('A nightclub may be accessible to the public even where entry requires payment, a ticket or club membership. Events also have separate qualifying-event tests. See section 2, section 3 and chapters 4-5 of the statutory guidance.',{size:8.8,color:MUTED});
- p.newPage();
- p.subtitle('SCORES BY SECTION');
- for(const section of r.sections){const value=section.max?section.earned/section.max*100:null;const flagged=value!==null&&value<25&&section.answered>=2;p.bar(`${section.name}${flagged?' [SEVERE GAP]':''}  (${section.answered} scored, ${section.unanswered} unanswered)`,value,flagged?RAG.Red:value!==null&&value<50?RAG.Amber:TEAL);}
- p.gap(2);
- p.title('Visual readiness summary');
- const priorityLabels=['Immediate','High','Medium','Low'];
- const priorityColors=[[.72,.23,.19],[.80,.47,.17],[.91,.66,.23],[.20,.49,.51]];
- const priorityValues=priorityLabels.map(name=>r.actions.filter(a=>a.priority===name).length);
- const maxPriority=Math.max(1,...priorityValues);
- p.subtitle('ACTION PRIORITIES - NUMBER OF ACTIONS');
- priorityLabels.forEach((name,i)=>p.countBar(name,priorityValues[i],maxPriority,priorityColors[i]));
- const answerLabels=[['yes','Yes'],['partly','Partly'],['no','No'],['not_sure','Not sure'],['na','N/A'],['','Unanswered']];
- const answerValues=answerLabels.map(([key])=>r.rows.filter(v=>v.answer===key).length);
- const maxAnswer=Math.max(1,...answerValues);
- p.subtitle('ANSWER PROFILE - NUMBER OF QUESTIONS');
- answerLabels.forEach(([key,name],i)=>p.countBar(name,answerValues[i],maxAnswer, key==='yes'?RAG.Green:key==='partly'?RAG.Amber:key==='no'?RAG.Red:TEAL));
- p.lineText('These charts show recorded responses and recommended action counts, not the likelihood of a terrorist attack. The RAG result is the private questionnaire score, not a statutory certification.',{size:8.9,color:MUTED});
-  p.newPage();
- p.title('How to read the priorities');
- p.subtitle('WHAT THIS SCORE DOES AND DOES NOT SAY');
- p.lineText('This weighted self-assessment is based on the supplied question matrix. It is not an SIA-approved scoring system, a safety guarantee, a certification or a legal compliance determination. Some assessed controls go beyond the express standard-tier legal requirements.',{size:9.1});
- p.lineText('The Act requires appropriate, reasonably practicable public protection procedures: evacuation, invacuation, lockdown and communication. Documenting procedures is recommended for standard-tier premises but is not an express section 7 duty; enhanced-tier premises and qualifying events have additional measures and documentation duties. Always review what is safe and proportionate for your site.',{size:9.1});
- p.lineText('A legal duty applies only when the Act covers the premises/event and any tier-specific conditions are met. Labels indicate whether a scored question is related to a wider statutory duty or is advisory; a low score alone is not proof of non-compliance.',{size:9.1,after:6});
- p.lineText('Home Office guidance terminology: MUST = legal requirement; SHOULD = recommended but not expressly required; COULD = optional example (paragraph 1.14).',{size:9,after:7});
- p.lineText('The first-page scope classification and duty checks are separate from the independent readiness rating. Confirm scope before applying tier-specific legal duties.',{size:8.8,after:6});
- if(r.answerChecks?.length){p.subtitle('ANSWERS REQUIRING CLARIFICATION');for(const item of r.answerChecks)p.lineText('- '+item,{size:8.6,after:3});}
- p.gap(4);
- p.title('Priority action plan');
- p.lineText('Priorities describe preparedness urgency, not legal enforceability. Answering Not sure uses No priority. Check action appropriateness and legal scope before implementing.',{size:9.2,after:10});
- if(!r.actions.length)p.lineText('No scored responses currently produce improvement actions. Check whether the questionnaire is complete and whether responses are supported by evidence.');
- for(const a of r.actions){
-   // Keep the question, finding and recommendation together where practicable.
-   p.ensure(172);
-   p.lineText(`${a.priority.toUpperCase()}  |  ${a.q.id}  |  ${a.q.section}  |  ${mapAnswer[a.answer]}`,{size:9.4,color:a.priority==='Immediate'?RAG.Red:TEAL,bold:true,after:3});
-   p.lineText(a.q.text,{size:10,bold:true,after:3});
-   const basis=B.classify(a.q.id,r.scope,b);p.lineText('Basis: '+basis.label+'  |  '+basis.reference,{size:8.3,color:MUTED,after:3});
-   p.lineText(`Finding: ${a.finding}`,{size:9,after:2});
-   if(a.q.critical==='Y'&&a.answer==='partly')p.lineText('Critical safeguard partly effective - review promptly.',{size:8.8,color:RAG.Amber,bold:true,after:2});
-   p.lineText(`Recommended action: ${a.action}`,{size:9.3,bold:true,after:2});
-   const note=state.notes?.[a.q.id];if(note)p.lineText(`Assessor note: ${note}`,{size:8.6,after:2});
-   p.gap(7);
+ p.subtitle('02  Readiness score');
+ const rag=r.rag||'Unrated',score=pct(r.score),c=RAG[rag]||MUTED;
+ p.rect(M,p.y-58,RIGHT-M,65,[.95,.97,.98]);p.rect(M,p.y-58,4,65,c);
+ p.at(rag.toUpperCase(),M+18,p.y-15,16,true,c);p.at(score,RIGHT-110,p.y-24,27,true,NAVY);
+ p.at(`${r.answered||0} of ${r.total||0} applicable questions  |  ${r.skippedByRouting||0} routed out  |  ${r.unanswered||0} unanswered`,M+18,p.y-41,8.6,false,MUTED);
+ p.y-=70;
+ p.lineText(`${criticalFlags} critical safeguards flagged   |   ${lowSections.length} very low-scoring sections   |   ${actions.length} improvement actions`,{size:8.8,after:4});
+ const reasons=r.ragReasons||[];
+ if(reasons.length)p.lineText('Rating limited by: '+reasons.join('; '),{size:8.7,bold:true,color:RAG.Amber,after:4});
+ p.gap(9);
+ p.subtitle('03  Immediate management attention');
+ if(actions.length){
+  const ordered=actions.slice().sort((a,z)=>Number(z.q?.critical==='Y')-Number(a.q?.critical==='Y'));
+  for(const a of ordered.slice(0,3)){
+    const text=`${a.q.id}  ${a.q.section}: ${a.finding}`;
+    p.lineText(text,{size:9.1,after:4,leading:13});
+  }
+ }else p.lineText('No improvement actions were generated. Review the reliability of the answers.',{size:9.1});
+ if((r.answerChecks||[]).length)p.lineText(`${r.answerChecks.length} answer combinations need checking. See page 2.`,{size:8.6,color:RAG.Amber,after:4});
+ p.gap(8);smallRule(p);
+ p.lineText('Readiness is a weighted self-assessment, not legal compliance or a prediction of an attack. Scope and duty-tier decisions must be confirmed separately. Improvement priority is not the same as a legal obligation.',{size:8.4,color:MUTED,leading:12});
+ // Page two: clean section profile and concise supporting information.
+ nextPage(p,'Readiness by topic');
+ p.lineText('Scores show the distribution of recorded answers. A low advisory section is a preparedness gap, not automatically a statutory breach.',{size:8.9,color:MUTED,after:10});
+ for(const section of sections){
+   const v=section.max?100*section.earned/section.max:null;
+   const clr=lowSections.includes(section.name)?RAG.Red:(v!==null&&v<50)?RAG.Amber:TEAL;
+   p.bar(section.name+(lowSections.includes(section.name)?'  -  review needed':''),v,clr);
  }
- // The action register is current at export; it is not frozen with an older audit snapshot.
- if(Array.isArray(tracker) && tracker.length){
-   p.title('Action tracker - progress at export');
-   p.lineText('This section reflects current saved action statuses on this device at the moment the PDF was generated. It is NOT part of an earlier assessment snapshot. Changes are logged separately in the local action history.',{size:9.1,color:MUTED,after:10});
-   const complete=tracker.filter(a=>a.status==='Completed').length;
-   const active=tracker.length-complete;
-   const overdue=tracker.filter(a=>a.status!=='Completed'&&a.dueDate&&a.dueDate<[new Date().getFullYear(),String(new Date().getMonth()+1).padStart(2,'0'),String(new Date().getDate()).padStart(2,'0')].join('-')).length;
-   p.kv('Action register:',`${tracker.length} total, ${active} outstanding, ${complete} completed`);
-   p.kv('Overdue:',`${overdue} outstanding actions`);
-   p.gap(10);
-   for(const a of tracker){
-     p.ensure(89);
-     p.lineText(`${a.questionId}  |  ${a.priority}  |  ${a.status}${a.flagged?'  |  Gap still flagged':'  |  Gap not flagged in latest review'}`,{bold:true,size:9.4,color:a.status==='Completed'?RAG.Green:a.dueDate&&a.dueDate<new Date().toISOString().slice(0,10)?RAG.Red:TEAL,after:3});
-     p.lineText(a.recommendation,{size:9.2,after:3});
-     p.lineText(`Owner: ${a.owner||'Not assigned'}   Target date: ${a.dueDate||'Not set'}`,{size:8.9,after:2});
-     if(a.note)p.lineText('Progress update: '+a.note,{size:8.7,after:3});
-     p.gap(6);
-   }
- }
- p.title('Full question-by-question record');
- p.lineText('S1-S12 form a separate scope screen, excluded from RAG scoring. Below are the readiness questions shown in this assessment. Items skipped by routing are not scored.',{size:9.2,after:9});
- for(const {q,answer} of r.rows){
-   p.ensure(78);
-   p.lineText(`${q.id}  |  ${q.section}  |  Weight ${q.weight}  |  ${mapAnswer[answer]||'Unanswered'}`,{size:9.4,bold:true,color:TEAL,after:3});
-   p.lineText(q.text,{size:9.6,bold:true,after:3});
-   const basis=B.classify(q.id,r.scope,b);p.lineText('Basis: '+basis.label+'  |  '+basis.reference,{size:8.2,color:MUTED,after:3});
-   if(answer==='yes'||answer==='partly'||answer==='no'||answer==='not_sure'){
-     const kind=answer==='yes'?'Yes':answer==='partly'?'Partly':'No';
-     p.lineText('Finding: '+q['finding'+kind],{size:8.8,after:2});
-     const savedAction=r.actions.find(a=>a.q.id===q.id);
-     const original=q['action'+kind];
-     const tailored= savedAction?.action || B.recommendation(q.id,answer,r.scope,b,original);
-     p.lineText('Recommended: '+tailored,{size:8.8,after:2});
-   }
-   if(answer==='na')p.lineText('Not applicable - excluded from readiness score.',{size:8.7,color:MUTED,after:2});
-   if(!answer)p.lineText('Not answered - score is provisional.',{size:8.7,color:MUTED,after:2});
-   const note=state.notes?.[q.id];if(note)p.lineText('Assessor note / evidence: '+note,{size:8.6,color:MUTED,after:2});
-   p.gap(5);
- }
- p.ensure(450); // Keep the final scope appendix together where possible, without an almost-empty preceding page.
- p.title('Scope answers, method and references');
- p.lineText('SCOPE & ROUTING (S1-S12) - EXCLUDED FROM RAG',{size:10,bold:true,color:TEAL});
- p.kv('S1 - responsible entity:',b.name||'Unknown');
- p.kv('S2 - premises address:',b.site||'Unknown');
- p.kv('S3 - premises use:',b.activity||'Unknown');
- p.kv('S4 - expected peak attendance:',b.peak===''?'Not sure':`${b.peak} people`);
- p.lineText('S5 - peak estimate basis: '+(b.peakMethod||'Not recorded'),{size:9.1});
- p.kv('S6 - events or out-of-hours activities:',b.events||'Not sure');
- if(b.events==='yes'||b.events==='unknown'){
-   p.kv('S7 - expected event peak:',b.eventPeak===''?'Not sure':`${b.eventPeak} people`);
-   p.kv('S8 - event location:',b.eventLocation||'Not recorded (legacy: same-site assumed)');
-   p.kv('S9 - event access controls:',mapAnswer[b.accessGeneral]||b.accessGeneral||'Not sure');
-   p.kv('Public access:',b.publicAccess||'Unknown');p.kv('Entry-condition checks:',b.entryChecks||'Unknown');
-   p.kv('Event exclusion:',b.eventExcluded||'Unknown');
- }
- p.kv('S10 - shared premises:',b.shared||'Not sure');
- if(b.shared==='yes'||b.shared==='unknown')p.kv('S11 - other responsible persons:',b.otherResponsible||'Not sure');
- p.kv('S12 - assessment date:',b.date||'Not recorded');p.kv('S12 - next review due:',b.reviewDate||'Not recorded');
- p.kv('Building/public access:',b.building||'Unknown');p.kv('Premises statutory exclusion:',b.excluded||'Unknown');
  p.gap(11);
- p.lineText('SCORING', {size:10,bold:true,color:TEAL});
- p.lineText('Yes = 2; Partly = 1; No or Not sure = 0. Weighted % = sum(answer score x weight) / sum(2 x weight) for answered, applicable questions. Not applicable and unanswered questions are excluded from the denominator. Green >=75%; Amber 50% to less than 75%; Red below 50%.', {size:9});
- p.lineText(r.scoringVersion==='matrix-2026-v2-safeguards'?'App guardrails: a critical Partly/No/Not sure, incomplete assessment or a scored section below 25% can cap Green at Amber. Weights and numeric score are unchanged. This is NOT an official statutory scoring method.':'Legacy scoring: critical No/Not sure or incomplete assessment capped Green at Amber. This historical score has not been recalculated.',{size:9});
- p.gap(5);
- p.lineText('OFFICIAL REFERENCES (available online when connected)',{size:10,bold:true,color:TEAL});
- p.lineText('Home Office statutory guidance, updated 25 August 2026:',{size:9,after:2});
- p.lineText('gov.uk/government/publications/the-terrorism-protection-of-premises-act-2025/terrorism-protection-of-premises-act-2025-statutory-guidance',{size:8.1});
- p.lineText('SIA regulator guidance: gov.uk/guidance/understanding-martyns-law-and-the-sias-role-as-regulator',{size:8.4});
- p.lineText('Prepared using government guidance reviewed on 14 November 2026. Check for newer requirements before relying on this assessment.',{size:9.1,color:MUTED});
+ p.subtitle('Answer summary');
+ const counts={yes:0,partly:0,no:0,not_sure:0,na:0,missing:0};
+ for(const row of rows){const a=row.answer||'missing';counts[a]=(counts[a]||0)+1;}
+ p.lineText(`${counts.yes} Yes   |   ${counts.partly} Partly   |   ${counts.no} No   |   ${counts.not_sure} Not sure   |   ${counts.na} N/A`,{size:10,bold:true,after:4});
+ p.gap(7);
+ if((r.answerChecks||[]).length){
+  p.subtitle('Answers to confirm');
+  for(const item of (r.answerChecks||[]).slice(0,5)){
+   const compact=item.replace(/\. Check whether Q5 should remain Yes and record what is missing\./,'. Check whether Q5 remains Yes.');
+   p.lineText('- '+compact,{size:8.6,leading:12,after:4});
+  }
+  p.gap(5);
+ }
+ p.subtitle('Scope facts');
+ p.lineText(`Premises use: ${b.activity||'Not specified'}    Expected peak: ${b.peak||'Not supplied'}    Public building: ${b.building||'Not sure'}`,{size:8.8,after:4});
+ p.lineText(`Events: ${b.events||'Not sure'}    Event peak: ${b.eventPeak||'Not supplied'}    Next review: ${b.reviewDate||'Not set'}`,{size:8.8,after:5});
+ p.gap(5);smallRule(p);
+ p.lineText('Scoring: Yes = 2, Partly = 1, No/Not sure = 0, multiplied by question weights. Green 75%+, Amber 50%-74.99%, Red below 50%; critical safeguards, unanswered questions and very low sections can prevent Green. This is Premivue methodology, not an official statutory standard.',{size:8.4,color:MUTED,leading:12,after:3});
+ p.lineText('Source: Home Office, Terrorism (Protection of Premises) Act 2025 statutory guidance (updated 25 August 2026). Verify current official guidance and scope before making compliance decisions.',{size:8.2,color:MUTED,leading:11.5,after:3});
+ // Clear and succinct full action plan, not repeated in full question record.
+ nextPage(p,'Prioritised action plan');
+ p.lineText('Each action shows its readiness priority and legal/advisory basis. Validate applicability and record responsibility in the action tracker.',{size:9,color:MUTED,after:13});
+ const mapTracker=new Map((Array.isArray(tracker)?tracker:[]).map(a=>[a.questionId,a]));
+ if(!actions.length)p.lineText('No actions generated from the recorded answers.',{size:9.5});
+ for(const a of actions){
+   const basis=B?.classify?.(a.q.id,sc,b)||{label:'Preparedness',reference:''};
+   const tr=mapTracker.get(a.q.id);
+   const headline=`${a.q.id}  /  ${a.q.section}   -   ${a.priority.toUpperCase()}${a.q.critical==='Y'?'   /   CRITICAL':''}`;
+   const recommendation=a.action||'Review the identified gap.';
+   const label=`${basis.label}${tr?'   |   '+tr.status:''}`;
+   const add=`${tr?'Owner: '+(tr.owner||'Unassigned')+'   |   Due: '+(tr.dueDate||'Not set'):''}`;
+   const h=31+lineCount(recommendation,RIGHT-M-12,9.15,false)*13+lineCount(label,RIGHT-M-12,8.3,false)*11+(add?18:0);
+   p.ensure(Math.max(58,h-6));
+   p.rule(M,p.y+12,RIGHT-M,[.85,.89,.92]);
+   p.at(headline,M,p.y,9.2,true,a.priority==='Immediate'?RAG.Red:a.priority==='High'?RAG.Amber:TEAL);p.y-=15;
+   p.lineText(label,{size:8.1,color:MUTED,leading:10.8,after:2});
+   p.lineText(recommendation,{size:9.15,leading:12.4,after:1});
+   if(add)p.lineText(add,{size:8.2,color:MUTED,after:2});
+   p.gap(4);
+ }
+ // Scope and legal disclaimers are presented once in the summary and scoring page.
+ // Keep question-by-question content in the optional report, with a plain compact record.
+ if(detailed){
+   nextPage(p,'Appendix - all question responses');
+   p.lineText('Detailed audit appendix. Original answers and assessor notes; recommendations are listed once in the preceding action plan.',{size:9,color:MUTED,after:11});
+   for(const {q,answer} of rows){
+     const head=`${q.id}   ${mapAnswer[answer]||'Unanswered'}   |   ${q.section}${q.critical==='Y'?'   |   Critical':''}`;
+     const qtxt=q.text||'';
+     const note=state.notes?.[q.id];
+     const h=27+lineCount(qtxt,RIGHT-M-8,9.1,false)*13+(note?lineCount('Note: '+note,RIGHT-M-8,8.2,false)*11+5:0);
+     p.ensure(h);
+     p.rule(M,p.y+10,RIGHT-M,[.89,.91,.94]);
+     p.at(head,M,p.y,9,true,answer==='no'||answer==='not_sure'?RAG.Red:answer==='partly'?RAG.Amber:INK);p.y-=15;
+     p.lineText(qtxt,{size:9.1,leading:13,after:3});
+     if(note)p.lineText('Note: '+note,{size:8.2,color:MUTED,leading:11,after:3});
+     p.gap(5);
+   }
+   p.gap(6);
+   p.subtitle('Recorded scope answers');
+   for(const [name,val] of Object.entries(b)){
+     if(!['name','site','assessor','date','activity','building','excluded','peak','events','eventPeak','publicAccess','entryChecks','eventExcluded','accessGeneral','shared','peakMethod','eventLocation','otherResponsible','reviewDate'].includes(name))continue;
+     p.lineText(`${name}: ${val||'Not entered'}`,{size:8.8,after:1,leading:12});
+   }
+ }
+ // Basic references appear once at end, no long repeated caveat page.
+ if(detailed){p.gap(8);p.lineText('The detailed appendix records the answers entered at assessment time; it is not an independent verification of those answers.',{size:8.3,color:MUTED});}
  return p.save();
 }
 const api={generate};root.ReadinessPdf=api;
