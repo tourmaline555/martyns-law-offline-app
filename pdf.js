@@ -2,7 +2,7 @@
 (function(root){
 'use strict';
 const W=595.28,H=841.89,M=43,RIGHT=W-M;
-const INK=[0.09,0.20,0.31],MUTED=[0.37,0.44,0.51],NAVY=[0.063,0.173,0.278],TEAL=[0.06,0.44,0.44];
+const INK=[0.094,0.169,0.243],MUTED=[0.376,0.455,0.529],NAVY=[0.063,0.137,0.231],TEAL=[0.086,0.647,0.545],MINT=[0.392,0.878,0.788];
 const RAG={Green:[0.14,0.48,0.30],Amber:[0.65,0.39,0.09],Red:[0.70,0.21,0.17],Unrated:[0.40,0.45,0.49]};
 function safe(t){return String(t??'').replace(/[\u2018\u2019]/g,"'").replace(/[\u201c\u201d]/g,'"').replace(/[\u2010-\u2015]/g,'-').replace(/\u2026/g,'...').replace(/\u00a3/g,'GBP ').replace(/\u00a0/g,' ').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7E]/g,'?');}
 function pdfLiteral(s){return '('+safe(s).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)')+')';}
@@ -18,7 +18,25 @@ class Pdf {
  rule(x,y,w,color=[.85,.89,.91]){this.out(`${this.color(color)} RG .6 w ${this.fmt(x)} ${this.fmt(y)} m ${this.fmt(x+w)} ${this.fmt(y)} l S\n`);}
  out(cmd){this.page.commands+=cmd;}
  at(text,x,y,size=10,bold=false,color=INK){this.out(`${this.color(color)} rg BT /${bold?'F2':'F1'} ${this.fmt(size)} Tf 1 0 0 1 ${this.fmt(x)} ${this.fmt(y)} Tm ${pdfLiteral(text)} Tj ET\n`);}
- newPage(){const page={commands:'',n:this.pages.length+1};this.pages.push(page);this.page=page;this.rect(0,H-68,W,68,NAVY);this.at('PREMIVUE',M,H-39,17,true,[1,1,1]);this.at("Martyn's Law readiness assessment   |   Independent self-assessment",M,H-56,8,false,[.81,.87,.91]);this.y=H-97;}
+ brandShield(x,top,s=1){
+   // The same rounded shield/check symbol as the Premivue website, translated to PDF vector paths.
+   const px=n=>this.fmt(x+n*s), py=n=>this.fmt(top-n*s);
+   this.out(`${this.color([0.082,0.216,0.333])} rg ${this.color(MINT)} RG ${this.fmt(2*s)} w `+
+    `${px(24)} ${py(3)} m ${px(42)} ${py(10)} l ${px(42)} ${py(23)} l `+
+    `${px(42)} ${py(35.5)} ${px(34.3)} ${py(43.8)} ${px(24)} ${py(46)} c `+
+    `${px(13.7)} ${py(43.8)} ${px(6)} ${py(35.5)} ${px(6)} ${py(23)} c `+
+    `${px(6)} ${py(10)} l h B\n`);
+   this.out(`${this.color(MINT)} RG ${this.fmt(4*s)} w 1 J 1 j ${px(14)} ${py(25)} m ${px(21)} ${py(32)} l ${px(35)} ${py(17)} l S\n`);
+ }
+ newPage(){const page={commands:'',n:this.pages.length+1};this.pages.push(page);this.page=page;
+  this.rect(0,H-72,W,72,NAVY);
+  this.brandShield(M-1, H-10, 1.02);
+  const left=M+58, y=H-39, brandSize=20;
+  this.at('Premi',left,y,brandSize,true,[1,1,1]);
+  this.at('vue',left+estimate('Premi',brandSize,true),y,brandSize,true,MINT);
+  this.at("MARTYN'S LAW READINESS & ASSURANCE",left,H-55,8,false,[.80,.89,.91]);
+  this.y=H-101;
+ }
  ensure(h){if(this.y-h<62)this.newPage();}
  gap(n=8){this.y-=n;this.ensure(4);}
  title(text){this.ensure(42);this.at(text,M,this.y,15,true,NAVY);this.y-=23;this.rule(M,this.y+5,W-2*M);this.y-=10;}
@@ -34,7 +52,7 @@ class Pdf {
  bar(label,score,barColor=TEAL){this.ensure(31);this.at(label,M,this.y,9.5,true,INK);this.at(score===null?'-':`${Math.round(score)}%`,RIGHT-38,this.y,9.5,true,barColor);this.y-=10;this.rect(M,this.y-7,RIGHT-M,7,[.90,.94,.95]);if(score!==null)this.rect(M,this.y-7,(RIGHT-M)*Math.max(0,Math.min(100,score))/100,7,barColor);this.y-=20;}
  countBar(label,count,maximum,color=TEAL){this.ensure(31);this.at(label,M,this.y,9.5,true,INK);this.at(String(count),RIGHT-38,this.y,9.5,true,INK);this.y-=10;this.rect(M,this.y-7,RIGHT-M,8,[.90,.94,.95]);if(count>0 && maximum>0)this.rect(M,this.y-7,(RIGHT-M)*count/maximum,8,color);this.y-=20;}
  save(){
-  this.pages.forEach((p,i)=>{p.commands+=`${this.color([.83,.87,.90])} RG .5 w ${M} 47 m ${RIGHT} 47 l S\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${M} 33 Tm ${pdfLiteral('Premivue  |  Private report  |  Generated on this device')} Tj ET\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${RIGHT-50} 33 Tm ${pdfLiteral(`Page ${i+1} / ${this.pages.length}`)} Tj ET\n`;});
+  this.pages.forEach((p,i)=>{p.commands+=`${this.color([.83,.87,.90])} RG .5 w ${M} 47 m ${RIGHT} 47 l S\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${M} 33 Tm ${pdfLiteral('Premivue  |  Independent readiness assessment  |  Generated on device')} Tj ET\n`;p.commands+=`${this.color(MUTED)} rg BT /F1 8 Tf 1 0 0 1 ${RIGHT-50} 33 Tm ${pdfLiteral(`Page ${i+1} / ${this.pages.length}`)} Tj ET\n`;});
   const objects=[];
   function add(s){objects.push(s);return objects.length;}
   const catalog=add(''),pages=add(''),regular=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'),bold=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');

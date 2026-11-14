@@ -66,3 +66,7 @@ Tests: `node test-v36.js` and `node test.js`, plus the other `test-*.js` files.
 - Standard PDF is a 3-page, focused management report for the example nightclub; full question-by-question responses are a separate **Download full assessment appendix** option under More options. Pagination adjusts to the length of content.
 - Share report shares the shorter management PDF, while the detailed appendix is available for an audit. The existing scoring and action tracking are unchanged.
 - Scope and all assessment data remain local to the device; back up the archive before installing.
+
+
+## v3.8 identity update
+See RELEASE-v3.8.md. App and PDF branding now match the Premivue website starter. No data migration or scoring changes.

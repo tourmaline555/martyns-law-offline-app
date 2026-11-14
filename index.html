@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#102c47">
-  <meta name="description" content="Private, offline Martyn's Law readiness self-assessment with weighted RAG and PDF report.">
+  <meta name="theme-color" content="#10233b">
+  <meta name="description" content="Premivue — Martyn's Law readiness and assurance, offline assessments, action tracking and reports.">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
-  <title>Martyn's Law | Readiness Check</title>
+  <title>Premivue | Martyn's Law Readiness &amp; Assurance</title>
   <script defer src="questions.js"></script>
   <script defer src="logic.js"></script>
   <script defer src="basis.js"></script>
@@ -21,18 +21,18 @@
 <body>
   <header class="site-header">
     <div class="header-inner">
-      <a class="brand" href="./" id="homeLink" aria-label="Readiness Check home"><span class="brand-mark">M<span>+</span></span><span><strong>Martyn's Law</strong><small>Readiness Check</small></span></a>
+      <a class="brand" href="./" id="homeLink" aria-label="Premivue assessment home"><svg class="brand-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M24 3 42 10v13c0 12.5-7.7 20.8-18 23C13.7 43.8 6 35.5 6 23V10L24 3Z" fill="#153755" stroke="#55dcc4" stroke-width="2"/><path d="m14 25 7 7 14-15" fill="none" stroke="#55dcc4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="brand-copy"><strong class="brand-wordmark">Premi<span class="brand-accent">vue</span></strong><small>Martyn's Law Readiness &amp; Assurance</small></span></a>
       <div class="header-right"><span class="privacy-label">Private &amp; offline-first</span><button id="helpBtn" type="button" class="text-button">About this check</button></div>
     </div>
   </header>
   <main id="app" class="main" aria-live="polite"></main>
-  <footer class="footer"><span>Independent self-assessment · Not an official government assessment</span><span>v3.7 · Simpler reports &amp; scope editing · 14 Nov 2026</span></footer>
+  <footer class="footer"><span>Premivue · Independent assessment · Not government endorsed</span><span>v3.8 · Premivue identity · 14 Nov 2026</span></footer>
   <noscript><p class="main">This app needs JavaScript enabled. It does not need an internet connection once installed or served locally.</p></noscript>
   <script>
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      const marker = 'martyns-app-sw-v3.7-refreshed';
+      const marker = 'martyns-app-sw-v3.8-refreshed';
       if (!sessionStorage.getItem(marker)) { sessionStorage.setItem(marker, '1'); window.location.reload(); }
     });
   }
