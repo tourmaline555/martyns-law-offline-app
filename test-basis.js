@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const B=require('./basis.js');
+assert.equal(B.CORE.size,8);assert.equal(B.SUPPORT.size,17);assert.equal(B.GOOD.size,13);
+const ALL=new Set([...B.CORE,...B.SUPPORT,...B.GOOD]);assert.equal(ALL.size,38);
+const standard={premises:'Standard tier',event:'No events indicated'};
+const enhanced={premises:'Enhanced tier',event:'No events indicated'};
+assert.equal(B.classify('Q5',standard).kind,'linked');
+assert.equal(B.classify('Q7',standard).kind,'advisory');
+assert.equal(B.classify('Q13',standard).kind,'good');
+assert.equal(B.classify('Q24',standard).kind,'advisory');
+assert.equal(B.classify('Q24',enhanced).kind,'linked');
+assert.equal(B.classify('Q31',standard).kind,'advisory');
+assert.equal(B.classify('Q31',enhanced).kind,'linked');
+assert.equal(B.classify('Q35',standard).kind,'advisory');
+assert.equal(B.classify('Q35',enhanced).kind,'linked');
+assert.match(B.classify('Q5',standard).detail,/not have an express duty to document/i);
+assert.match(B.overview(standard).join(' '),/section 9 notification/i);
+console.log('PASS: classification mapping, tier variations, scope caveats.');

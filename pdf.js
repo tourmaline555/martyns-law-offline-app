@@ -50,12 +50,14 @@ class Pdf {
   return bytes(all);
  }
 }
+const B=root.ReadinessBasis || (typeof require==='function' ? require('./basis.js') : null);
 const mapAnswer={yes:'Yes',partly:'Partly',no:'No',not_sure:'Not sure',na:'Not applicable'};
 function generate(state,result,tracker=[]){
  const p=new Pdf(),b=state.business,r=result;
  p.title('Preparedness assessment report');
  p.kv('Organisation:',b.name||'Not specified');p.kv('Site / location:',b.site||'Not specified');p.kv('Assessed by:',b.assessor||'Not specified');p.kv('Assessment date:',b.date||new Date().toISOString().slice(0,10));
  p.kv('Record type:',state._audit?'Saved historical snapshot':'Current assessment - not saved to audit trail');
+ p.kv('Questionnaire version:',state._audit?.questionnaireVersion||'v3.4 current draft');
  if(state._audit){p.kv('Audit record ID:',state._audit.id);p.kv('Saved on device (UTC):',state._audit.createdAt);}
  p.gap(10);
  p.subtitle('OVERALL READINESS');
@@ -64,9 +66,10 @@ function generate(state,result,tracker=[]){
  p.lineText(`Critical overrides: ${r.critical.length}${r.critical.length?' ('+r.critical.map(q=>q.id).join(', ')+')':' (none triggered)'}. Actions recommended: ${r.actions.length}.`,{size:9.4});
  p.subtitle('PRELIMINARY SCOPE SCREEN');
  p.kv('Premises:',r.scope.premises);p.kv('Events:',r.scope.event);p.kv('Expected premises peak:',r.scope.peak===null?'Not provided':r.scope.peak+' people');
- if(b.events==='yes')p.kv('Expected event peak:',r.scope.eventPeak===null?'Not provided':r.scope.eventPeak+' people');
+ if(b.events==='yes'||b.events==='unknown')p.kv('Expected event peak:',r.scope.eventPeak===null?'Not provided':r.scope.eventPeak+' people');
  if(r.scope.special)p.lineText('Special rule: childcare, schools, further education and places of worship are generally treated as standard-tier premises even at 800+, and qualifying events at these premises are excluded.',{size:8.6,color:MUTED});
- p.lineText('Scope is indicative only. Mixed-use premises, exclusions, shared sites and event conditions require case-specific consideration.',{size:8.6,color:MUTED});
+ p.lineText('Scope is indicative only. Mixed-use premises, exclusions, shared sites and events at separate locations require case-specific consideration.',{size:8.6,color:MUTED});
+ for(const reason of (r.scope.reasons||[]).slice(0,4))p.lineText('Review: '+reason,{size:8.0,color:MUTED,after:2});
  p.gap(4);
  const summaryFindings=r.actions.filter(a=>(a.answer==='no'||a.answer==='not_sure')&&(a.q.summary==='Y'||a.critical));
  p.subtitle('EXECUTIVE HIGHLIGHTS');
@@ -92,14 +95,22 @@ function generate(state,result,tracker=[]){
  p.lineText('These charts show recorded responses and recommended action counts, not the likelihood of a terrorist attack. The RAG result is the private questionnaire score, not a statutory certification.',{size:8.9,color:MUTED});
   p.subtitle('WHAT THIS SCORE DOES AND DOES NOT SAY');
  p.lineText('This weighted self-assessment is based on the supplied question matrix. It is not an SIA-approved scoring system, a safety guarantee, a certification or a legal compliance determination. Some assessed controls go beyond the express standard-tier legal requirements.',{size:9.1});
- p.lineText('The Act focuses on appropriate, reasonably practicable public protection procedures: evacuation, invacuation, lockdown and communication. Enhanced-tier premises and qualifying events have additional obligations, including measures and documentation. Always review what is safe and proportionate for your circumstances.',{size:9.1});
+ p.lineText('The Act requires appropriate, reasonably practicable public protection procedures: evacuation, invacuation, lockdown and communication. Documenting procedures is recommended for standard-tier premises but is not an express section 7 duty; enhanced-tier premises and qualifying events have additional measures and documentation duties. Always review what is safe and proportionate for your site.',{size:9.1});
+ p.newPage();
+ p.title('Legal duty and advisory distinction');
+ p.lineText('A legal duty applies only when the Act covers the premises/event and any tier-specific conditions are met. Labels indicate whether a scored question is related to a wider statutory duty or is advisory; a low score alone is not proof of non-compliance.',{size:9.1,after:6});
+ p.lineText('Home Office guidance terminology: MUST = legal requirement; SHOULD = recommended but not expressly required; COULD = optional example (paragraph 1.14).',{size:9,after:7});
+ for(const n of B.overview(r.scope))p.lineText('- '+n,{size:8.8,after:4});
+ p.gap(4);
  p.title('Priority action plan');
  p.lineText('Actions are ordered Immediate, High, Medium and Low. Answers of "Not sure" use the same conservative action/priority as "No". Check each proposed action for practicality and relevance before implementing.',{size:9.2,after:10});
  if(!r.actions.length)p.lineText('No scored responses currently produce improvement actions. Check whether the questionnaire is complete and whether responses are supported by evidence.');
  for(const a of r.actions){
-   p.ensure(80);
+   // Keep the question, finding and recommendation together where practicable.
+   p.ensure(172);
    p.lineText(`${a.priority.toUpperCase()}  |  ${a.q.id}  |  ${a.q.section}  |  ${mapAnswer[a.answer]}`,{size:9.4,color:a.priority==='Immediate'?RAG.Red:TEAL,bold:true,after:3});
    p.lineText(a.q.text,{size:10,bold:true,after:3});
+   const basis=B.classify(a.q.id,r.scope,b);p.lineText('Basis: '+basis.label+'  |  '+basis.reference,{size:8.3,color:MUTED,after:3});
    p.lineText(`Finding: ${a.finding}`,{size:9,after:2});
    p.lineText(`Recommended action: ${a.action}`,{size:9.3,bold:true,after:2});
    const note=state.notes?.[a.q.id];if(note)p.lineText(`Assessor note: ${note}`,{size:8.6,after:2});
@@ -125,43 +136,55 @@ function generate(state,result,tracker=[]){
    }
  }
  p.title('Full question-by-question record');
- p.lineText('Q1-Q4 form the separate scope screen. The record below contains each readiness question shown in this assessment. Items skipped by conditional branching are not scored.',{size:9.2,after:9});
+ p.lineText('S1-S12 form a separate scope screen, excluded from RAG scoring. Below are the readiness questions shown in this assessment. Items skipped by routing are not scored.',{size:9.2,after:9});
  for(const {q,answer} of r.rows){
    p.ensure(78);
    p.lineText(`${q.id}  |  ${q.section}  |  Weight ${q.weight}  |  ${mapAnswer[answer]||'Unanswered'}`,{size:9.4,bold:true,color:TEAL,after:3});
    p.lineText(q.text,{size:9.6,bold:true,after:3});
+   const basis=B.classify(q.id,r.scope,b);p.lineText('Basis: '+basis.label+'  |  '+basis.reference,{size:8.2,color:MUTED,after:3});
    if(answer==='yes'||answer==='partly'||answer==='no'||answer==='not_sure'){
      const kind=answer==='yes'?'Yes':answer==='partly'?'Partly':'No';
      p.lineText('Finding: '+q['finding'+kind],{size:8.8,after:2});
-     p.lineText('Recommended: '+q['action'+kind],{size:8.8,after:2});
+     const savedAction=r.actions.find(a=>a.q.id===q.id);
+     const original=q['action'+kind];
+     const tailored= savedAction?.action || B.recommendation(q.id,answer,r.scope,b,original);
+     p.lineText('Recommended: '+tailored,{size:8.8,after:2});
    }
    if(answer==='na')p.lineText('Not applicable - excluded from readiness score.',{size:8.7,color:MUTED,after:2});
    if(!answer)p.lineText('Not answered - score is provisional.',{size:8.7,color:MUTED,after:2});
    const note=state.notes?.[q.id];if(note)p.lineText('Assessor note / evidence: '+note,{size:8.6,color:MUTED,after:2});
    p.gap(5);
  }
+ p.newPage();
  p.title('Scope details and scoring method');
- p.lineText('PREMISES AND EVENT SCREEN (Q1-Q4)',{size:10,bold:true,color:TEAL});
- p.kv('Q1 - expected peak attendance:',b.peak===''?'Not sure':`${b.peak} people`);
- p.kv('Q2 - events / higher attendance:',b.events||'Not sure');
- p.kv('Q3 - largest event attendance:',b.events==='yes'?(b.eventPeak===''?'Not sure':`${b.eventPeak} people`):'Not applicable');
- p.kv('Q4 - event access controls:',b.events==='yes'?(mapAnswer[b.accessGeneral]||'Not sure'):'Not applicable');
- p.kv('Schedule 1 principal use category:',b.activity||'Unknown');
- p.kv('Building or part of building:',b.building||'Unknown');p.kv('Premises excluded:',b.excluded||'Unknown');
- if(b.events==='yes'){
-   p.kv('Public attendance:',b.publicAccess||'Unknown');p.kv('Tickets / membership checked:',b.entryChecks||'Unknown');p.kv('Event excluded:',b.eventExcluded||'Unknown');
+ p.lineText('SCOPE & ROUTING (S1-S12) - EXCLUDED FROM RAG',{size:10,bold:true,color:TEAL});
+ p.kv('S1 - responsible entity:',b.name||'Unknown');
+ p.kv('S2 - premises address:',b.site||'Unknown');
+ p.kv('S3 - premises use:',b.activity||'Unknown');
+ p.kv('S4 - expected peak attendance:',b.peak===''?'Not sure':`${b.peak} people`);
+ p.lineText('S5 - peak estimate basis: '+(b.peakMethod||'Not recorded'),{size:9.1});
+ p.kv('S6 - events or out-of-hours activities:',b.events||'Not sure');
+ if(b.events==='yes'||b.events==='unknown'){
+   p.kv('S7 - expected event peak:',b.eventPeak===''?'Not sure':`${b.eventPeak} people`);
+   p.kv('S8 - event location:',b.eventLocation||'Not recorded (legacy: same-site assumed)');
+   p.kv('S9 - event access controls:',mapAnswer[b.accessGeneral]||b.accessGeneral||'Not sure');
+   p.kv('Public access:',b.publicAccess||'Unknown');p.kv('Entry-condition checks:',b.entryChecks||'Unknown');
+   p.kv('Event exclusion:',b.eventExcluded||'Unknown');
  }
- p.kv('Shared premises:',b.shared||'Unknown');
+ p.kv('S10 - shared premises:',b.shared||'Not sure');
+ if(b.shared==='yes'||b.shared==='unknown')p.kv('S11 - other responsible persons:',b.otherResponsible||'Not sure');
+ p.kv('S12 - assessment date:',b.date||'Not recorded');p.kv('S12 - next review due:',b.reviewDate||'Not recorded');
+ p.kv('Building/public access:',b.building||'Unknown');p.kv('Premises statutory exclusion:',b.excluded||'Unknown');
  p.gap(11);
  p.lineText('SCORING', {size:10,bold:true,color:TEAL});
  p.lineText('Yes = 2; Partly = 1; No or Not sure = 0. Weighted % = sum(answer score x weight) / sum(2 x weight) for answered, applicable questions. Not applicable and unanswered questions are excluded from the denominator. Green >=75%; Amber 50% to less than 75%; Red below 50%.', {size:9});
- p.lineText('If any critical override question is No or Not sure, overall cannot be Green. Incomplete assessments cannot be Green. Q1-Q4 are not included in readiness scoring. These RAG bands and overrides come from the supplied spreadsheet, not the Act.',{size:9});
+ p.lineText('If any critical override question is No or Not sure, overall cannot be Green. Incomplete assessments cannot be Green. S1-S12 are not included in readiness scoring. These RAG bands and overrides come from the supplied spreadsheet, not the Act.',{size:9});
  p.gap(5);
  p.lineText('OFFICIAL REFERENCES (available online when connected)',{size:10,bold:true,color:TEAL});
  p.lineText('Home Office statutory guidance, updated 25 August 2026:',{size:9,after:2});
  p.lineText('gov.uk/government/publications/the-terrorism-protection-of-premises-act-2025/terrorism-protection-of-premises-act-2025-statutory-guidance',{size:8.1});
  p.lineText('SIA regulator guidance: gov.uk/guidance/understanding-martyns-law-and-the-sias-role-as-regulator',{size:8.4});
- p.lineText('Prepared using government guidance reviewed on 13 November 2026. Check for newer requirements before relying on this assessment.',{size:9.1,color:MUTED});
+ p.lineText('Prepared using government guidance reviewed on 14 November 2026. Check for newer requirements before relying on this assessment.',{size:9.1,color:MUTED});
  return p.save();
 }
 const api={generate};root.ReadinessPdf=api;
