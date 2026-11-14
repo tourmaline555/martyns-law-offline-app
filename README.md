@@ -1,4 +1,4 @@
-# Premivue readiness prototype — v3.5
+# Premivue readiness prototype — v3.6
 
 ## Scope and tier-specific recommendations
 
@@ -48,3 +48,13 @@ This independent self-assessment is not an official SIA assessment or legal cert
 - A critical Partly answer prevents Green. A topic below 25% (with at least two scored items) also prevents Green. No change to the numeric weighted percentage.
 - RAG reasons are explained on screen and in the PDF; legacy archived ratings are preserved and marked as legacy.
 - Priority labels describe preparedness urgency, not legal requirement.
+
+## v3.6 — Scope and report clarity
+
+- High-occupancy listed uses combined with a negative public-building/access answer or claimed exclusion are marked **Review required**, never automatically "not qualifying". Do not treat this as proof of legal scope or exemption.
+- The app checks Q5/Q8 and Q8/Q11 as well as Q16/Q26 and Q17/Q32 for answers to clarify. These prompts do not affect weights or scores.
+- Practical recommendations improved for Q8, Q13, Q25, Q32 and Q34. Original action priority levels retained.
+- PDF places scope first, distinguishes readiness score from statutory duties, highlights severe section gaps, and uses measured Helvetica widths to avoid clipping. Draft exports state that they are not yet archived.
+- The questionnaire remains 38 checks, with scope handled separately and conditional routing preserved. Historical snapshots are not silently rescored or modified.
+
+Tests: `node test-v36.js` and `node test.js`, plus the other `test-*.js` files.

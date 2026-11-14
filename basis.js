@@ -47,6 +47,16 @@ function recommendation(id,answer,scope={},business={},original=''){
   const enhanced=scope.premises==='Enhanced tier'||scope.event==='Potential qualifying event (enhanced duties)';
   const standard=scope.premises==='Standard tier'&&!enhanced;
   let advice='';
+  // Practical next steps. These are not prescribed equipment, mandated drill frequency,
+  // or proof of statutory non-compliance; the site must decide what is practicable.
+  const practical={
+    Q8:'Review when lockdown is appropriate, who initiates it, how areas can be secured promptly and safely, how people receive instructions, and how fire escape routes remain safe. Walk through the procedure with the relevant staff.',
+    Q13:'Identify an alternative way to warn staff and people at the premises if the primary system fails. Make responsibilities clear and check that the fallback can be used in practice.',
+    Q25:'Review the identified weaknesses, decide which proportionate measures are justified, assign an owner and target date, and check that the actions were completed.',
+    Q32:'Review what existing drills actually tested, identify any untested evacuation, invacuation, lockdown or communication procedures, and conduct a proportionate exercise or structured review with lessons recorded.',
+    Q34:'Name the person responsible for periodically reviewing procedures, record the review date, and review sooner following changes to layout, staffing, operations or identified risks.'
+  };
+  if(['partly','no','not_sure'].includes(answer) && practical[id])original=practical[id];
   if(id==='Q5' && standard)advice='Standard tier: ensure appropriate section 5 procedures work in practice. Written documentation is recommended, not a separate section 7 requirement.';
   if(id==='Q5' && enhanced)advice='Enhanced tier/qualifying event: alongside section 5 procedures, prepare the section 7 document recording procedures, measures and their expected effect.';
   if(id==='Q24' || id==='Q25'){

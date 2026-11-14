@@ -14,8 +14,22 @@ function computeScope(b){
   const eventLocation=b.eventLocation || 'legacy_at_site'; // Old saved records assumed same-site events.
   let premises='Review required';
   const reasons=[];
-  if(b.building==='no'||b.activity==='none'||b.excluded==='yes'||(peak!==null&&peak<200)) premises='Not qualifying on stated information';
-  else if(b.building==='yes' && knownUse && b.excluded==='no' && peak!==null){
+  const listedUse=knownUse && b.activity!=='none';
+  const potentiallyInScope=listedUse && peak!==null && peak>=200;
+  // A high-attendance Schedule 1 venue can be open to paying, ticket-holding or club-member
+  // visitors. A mistaken 'No' to public access should never become a confident exclusion.
+  if(potentiallyInScope && b.building==='no'){
+    premises='Review required - conflicting scope answers';
+    reasons.push('You entered a Schedule 1 premises use and '+peak+' people, but selected No for a publicly accessible building. Check whether the building admits paying customers, ticket-holders, guests or club members: access restrictions do not necessarily make it private. If there really is no publicly accessible building, document why and assess events separately.');
+  } else if(potentiallyInScope && b.excluded==='yes'){
+    premises='Review required - claimed statutory exclusion';
+    reasons.push('The venue has '+peak+' people and a listed use, but a Schedule 2 exclusion was selected. Identify and verify the specific statutory exclusion before concluding that the premises are outside the Act.');
+  } else if(peak!==null&&peak<200){
+    premises='Not qualifying on stated information';
+  } else if(b.building==='no'||b.activity==='none'||b.excluded==='yes'){
+    premises='Not qualifying on stated information';
+    if(b.excluded==='yes')reasons.push('Confirm which Schedule 2 exclusion applies and retain the rationale.');
+  } else if(b.building==='yes' && listedUse && b.excluded==='no' && peak!==null){
     premises=peak>=800&&!special?'Enhanced tier':'Standard tier';
   } else reasons.push('Confirm Schedule 1 use, publicly accessible building, exclusions and reasonable peak attendance.');
   if(peak===null || !(b.peakMethod||'').trim()) reasons.push('Record the expected peak and how the estimate was reached.');
@@ -40,7 +54,7 @@ function computeScope(b){
   if(b.shared==='unknown'||(['yes','unknown'].includes(b.shared)&&(!b.otherResponsible||b.otherResponsible==='unknown'))) reasons.push('Clarify who controls the premises/event and whether responsible persons must coordinate.');
   if(['yes','unknown'].includes(b.events)&&!b.accessGeneral)reasons.push('Record how event or out-of-hours access is controlled (distinct from statutory entry-condition checks).');
   if(b.shared==='yes' && b.otherResponsible==='no') reasons.push('Shared use does not necessarily mean several responsible persons; clarify control.');
-  return {premises,event,special,peak,eventPeak,eventLocation,scopeUnknown:premises==='Review required'||event.startsWith('Review required'),reasons};
+  return {premises,event,special,peak,eventPeak,eventLocation,scopeUnknown:premises.startsWith('Review required')||event.startsWith('Review required'),reasons};
 }
 function activeQuestions(questions,b){return questions.filter(q=>q.section!=='Scope' && (q.section!=='Events'||b.events==='yes'||b.events==='unknown') && (q.id!=='Q38'||b.shared!=='no'));}
 function summarize(questions,b,answers){
@@ -86,6 +100,12 @@ function summarize(questions,b,answers){
   const questionBank=questions.filter(q=>q.section!=='Scope').length;
   // Potentially conflicting interpretations; invite review without altering the score.
   const answerChecks=[];
+  if(answers.Q5==='yes'){
+    for(const id of ['Q6','Q8','Q10','Q11','Q12']){
+      if(['partly','no','not_sure'].includes(answers[id]))answerChecks.push('Q5 says all four protection procedures are in place, but '+id+' reports '+(answers[id]==='partly'?'a partly effective procedure':'a serious or unverified gap')+'. Check whether Q5 should remain Yes and record what is missing.');
+    }
+  }
+  if(answers.Q8==='partly' && answers.Q11==='yes')answerChecks.push('Q11 confirms some entry/exit lockdown capability, while Q8 says activation is only partly effective. These assess different things: confirm whether lockdown could be implemented promptly and safely.');
   if(answers.Q17==='yes' && ['no','not_sure'].includes(answers.Q32))answerChecks.push('Q17 says evacuation/lockdown drills were carried out, but Q32 says procedure effectiveness was not checked. Confirm what was actually tested.');
   if(answers.Q16==='yes' && ['no','not_sure'].includes(answers.Q26))answerChecks.push('Q16 says staff know how to report concerns, but Q26 indicates no simple reporting route for suspicious activity. Clarify the difference.');
   return {score,rag,earned,max,answered,unanswered,na,total:active.length,questionBank,skippedByRouting:questionBank-active.length,critical,criticalPartly,lowSections,ragReasons,answerChecks,actions,rows,sections:Object.values(sections),scope,provisional:unanswered>0,scoringVersion:'matrix-2026-v2-safeguards'};

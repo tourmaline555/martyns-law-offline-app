@@ -54,3 +54,8 @@
 .basis-info p{margin:.48rem 0;font-size:.88rem}
 .action .basis-tag{margin:.45rem 0 .15rem}
 @media (max-width:460px){.basis-tag{font-size:.73rem}}
+
+/* v3.6: draw attention to serious readiness gaps without suggesting statutory failure. */
+.score-item.severe-section {border:1px solid #dcaa9e; background:#fff5f2; border-radius:12px; padding:12px;}
+.score-item.severe-section .score-item-head {color:#933a27; font-weight:700;}
+.score-item.severe-section .progress-track > span {background:#b84e3d !important;}

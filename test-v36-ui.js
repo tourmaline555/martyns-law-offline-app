@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');const fs=require('node:fs'),vm=require('node:vm');
+const L=require('./logic.js'),B=require('./basis.js');const bank={window:{}};
+vm.runInNewContext(fs.readFileSync(__dirname+'/questions.js','utf8'),bank);
+const Q=bank.window.ASSESSMENT_QUESTIONS;
+const b={...L.defaultState().business,name:'Example Nightclub',site:'Fictional Street',activity:'entertainment',building:'no',excluded:'no',peak:'1000',peakMethod:'Count',events:'yes',eventLocation:'at_site',eventPeak:'1200',publicAccess:'yes',entryChecks:'no',eventExcluded:'no',shared:'no'};
+const answers=Object.fromEntries(L.activeQuestions(Q,b).map(q=>[q.id,'yes']));
+Object.assign(answers,{Q7:'not_sure',Q8:'partly',Q13:'no',Q15:'partly',Q25:'partly',Q26:'no',Q31:'no',Q32:'no',Q33:'no',Q34:'no'});
+const draft={...L.defaultState(),business:b,screen:'results',answers};
+const root={ASSESSMENT_QUESTIONS:Q,ReadinessLogic:L,ReadinessBasis:B};
+const dom={getElementById:()=>({innerHTML:''}),querySelectorAll:()=>[]};
+const localStorage={getItem:()=>JSON.stringify(draft),setItem:()=>{}};
+const app=fs.readFileSync(__dirname+'/app.js','utf8');
+const code=app.replace(/\ninit\(\);\n\}\)\(\);\s*$/, '\nwindow.renderV36Test=renderResults;\n})();\n');
+assert.notEqual(code,app);
+vm.runInNewContext(code,{window:root,document:dom,localStorage,navigator:{},setTimeout,alert:()=>{},confirm:()=>true,URL,Blob,console});
+const html=root.renderV36Test();
+for(const x of ['Legal-scope check required','Review required - conflicting scope answers','severe-section','Documentation','Q5 says all four','Q8','Save assessment &amp; finish','Share report'])assert.ok(html.includes(x),x);
+console.log('PASS v3.6 UI: strong scope warning above score, severe section highlighted, answer checks shown, existing actions retained.');
